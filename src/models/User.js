@@ -42,6 +42,20 @@ class User {
         return rows[0];
     }
 
+    static async getUserDetailsById(id) {
+
+        const sql = `
+        SELECT *
+        FROM user_details
+        WHERE user_id = ?
+        LIMIT 1
+    `;
+
+        const [rows] = await db.execute(sql, [id]);
+
+        return rows.length ? rows[0] : null;
+    }
+
 
 }
 

@@ -1,6 +1,7 @@
 const db = require("../config/db");
 const Razorpay = require("razorpay");
-const io = require("../sockets").getIO();
+const { getIO } = require("../sockets");
+
 
 const razorpay = new Razorpay({
     key_id: process.env.RAZORPAY_KEY,
@@ -60,7 +61,6 @@ exports.store = async (req, res) => {
 
         }
 
-        const ride = rides[0];
 
         // Prevent self booking
 
@@ -114,7 +114,6 @@ exports.store = async (req, res) => {
         */
 
         const bookingCode = "BK" + Date.now();
-
         const totalPrice = Number(ride.price_per_seat) * Number(seats);
 
         // Create Booking
@@ -154,15 +153,10 @@ exports.store = async (req, res) => {
         const bookingId = booking.insertId;
 
         // Razorpay Order
-
         const order = await razorpay.orders.create({
-
             receipt: `booking_${bookingId}`,
-
             amount: totalPrice * 100,
-
             currency: "INR"
-
         });
 
         // Save Payment
@@ -189,17 +183,11 @@ exports.store = async (req, res) => {
         await connection.commit();
 
         return res.json({
-
             status: "success",
-
             booking_id: bookingId,
-
             order_id: order.id,
-
             amount: totalPrice,
-
             razorpay_key: process.env.RAZORPAY_KEY
-
         });
     } catch (err) {
         await connection.rollback();

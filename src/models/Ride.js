@@ -161,6 +161,29 @@ class Ride {
 
         return rides;
     }
+
+    static async searchLocations(keyword) {
+
+        const sql = `
+            SELECT DISTINCT source_address AS location
+            FROM rides
+            WHERE source_address LIKE ?
+
+            UNION
+
+            SELECT DISTINCT destination_address AS location
+            FROM rides
+            WHERE destination_address LIKE ?
+
+            ORDER BY location
+        `;
+
+        const search = `%${keyword}%`;
+
+        const [rows] = await db.execute(sql, [search, search]);
+
+        return rows.map(row => row.location);
+    }
 }
 
 module.exports = Ride;

@@ -1,23 +1,26 @@
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const APP_URL = process.env.APP_URL;
 
 exports.userLogin = async (req, res) => {
 
-    // console.log('Headers:', req.headers);
-    // console.log('Body:', req.body);
+    // console.log("Headers:", req.headers);
+    // console.log("Body:", req.body);
 
-    // return res.json({
-    //     headers: req.headers,
-    //     body: req.body
-    // });
     try {
+        if (!req.body) {
+            return res.status(400).json({
+                success: "error",
+                message: "Request body is missing."
+            });
+        }
 
         const { email, password } = req.body;
 
         if (!email || !password) {
             return res.status(422).json({
-                success: false,
+                success: "error",
                 message: 'Email and password are required'
             });
         }
@@ -26,7 +29,7 @@ exports.userLogin = async (req, res) => {
 
         if (!user) {
             return res.status(401).json({
-                success: false,
+                success: "error",
                 message: 'Invalid credentials'
             });
         }
@@ -38,7 +41,7 @@ exports.userLogin = async (req, res) => {
 
         if (!isPasswordValid) {
             return res.status(401).json({
-                success: false,
+                success: "error",
                 message: 'Invalid credentials'
             });
         }
@@ -53,7 +56,12 @@ exports.userLogin = async (req, res) => {
                 expiresIn: '7d'
             }
         );
-
+        const userDetails = await User.getUserDetailsById(user.id);
+        if (userDetails) {
+            userDetails.profile_picture = userDetails.profile_picture
+                ? `${APP_URL}/uploads/user/${userDetails.profile_picture}`
+                : "";
+        }
         return res.status(200).json({
             success: true,
             message: 'Login successful',
@@ -61,14 +69,15 @@ exports.userLogin = async (req, res) => {
             user: {
                 id: user.id,
                 name: user.name,
-                email: user.email
+                email: user.email,
+                user_details: userDetails,
             }
         });
 
     } catch (error) {
 
         return res.status(500).json({
-            success: false,
+            success: "error",
             message: error.message
         });
 

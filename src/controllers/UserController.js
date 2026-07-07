@@ -1,7 +1,7 @@
 const User = require('../models/User');
 const Role = require('../models/Role');
 
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const db = require("../config/db"); // mysql2/promise connection
 
@@ -50,7 +50,25 @@ exports.edit = async (req, res) => {
 };
 
 exports.getRoles = async (req, res) => {
-    const roles = await Role.getAll();
+    try {
+
+        const { name } = req.query;
+        console.log(name);
+
+        const roles = await Role.getAllRoles(name);
+
+        return res.json(roles);
+
+    } catch (err) {
+
+        console.error(err);
+
+        return res.status(500).json({
+            status: "error",
+            message: err.message
+        });
+
+    }
 };
 
 

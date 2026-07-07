@@ -24,7 +24,7 @@ router.post(
     UserController.register
 );
 
-router.post('/v1/login', LoginController.userLogin);
+router.post('/v1/login', upload("user").none(), LoginController.userLogin);
 router.post("/v1/forgot-password", UserController.passwordReset);
 router.post("/v1/send-otp", UserController.sendOTP);
 router.post("/v1/verify-otp", UserController.verifyOTP);
@@ -46,25 +46,26 @@ router.get('/v1/edit-user/:id', auth, UserController.edit);
 |--------------------------------------------------------------------------
 */
 
-router.get("/v1/vehicles", auth, VehicleController.index);
+// router.get("/v1/vehicles", auth, VehicleController.index);
 
-router.post("/v1/store-vehicle-data", auth, VehicleController.store);
+// router.post("/v1/store-vehicle-data", auth, VehicleController.store);
 
-router.get("/v1/edit-vehicle-data/:id", auth, VehicleController.edit);
+// router.get("/v1/edit-vehicle-data/:id", auth, VehicleController.edit);
 
-router.put("/v1/update-vehicle-data/:id", auth, VehicleController.update);
+// router.put("/v1/update-vehicle-data/:id", auth, VehicleController.update);
 
-router.delete("/v1/destroy-vehicle-data/:id", auth, VehicleController.destroy);
+// router.delete("/v1/destroy-vehicle-data/:id", auth, VehicleController.destroy);
 
 /*
 |--------------------------------------------------------------------------
 | Ride Management
 |--------------------------------------------------------------------------
 */
-
+router.post("/v1/find-rides", RideController.findRides);
+router.post('/v1/search-locaton', RideController.searchLocations);
 router.get("/v1/rides", auth, RideController.index);
-
 router.post("/v1/store-ride-data", auth, RideController.store);
+router.get("/v1/edit-ride-data/:id", auth, RideController.edit);
 
 /*
 |--------------------------------------------------------------------------
@@ -72,7 +73,7 @@ router.post("/v1/store-ride-data", auth, RideController.store);
 |--------------------------------------------------------------------------
 */
 
-router.get("/v1/driver/booking-requests", auth, BookingController.index);
+// router.get("/v1/driver/booking-requests", auth, BookingController.index);
 
 router.post("/v1/create-booking", auth, BookingController.store);
 
@@ -80,13 +81,13 @@ router.post("/v1/payment-success", auth, BookingController.paymentSuccess);
 
 router.post("/v1/payment-failed", auth, BookingController.paymentFailed);
 
-router.post("/bookings/:bookingId/refund", auth, BookingController.refund);
+// router.post("/bookings/:bookingId/refund", auth, BookingController.refund);
 
-router.post("/v1/bookings/:id/accept", auth, BookingController.acceptUserBooking);
+// router.post("/v1/bookings/:id/accept", auth, BookingController.acceptUserBooking);
 
-router.post("/v1/bookings/:id/reject", auth, BookingController.rejectUserBooking);
+// router.post("/v1/bookings/:id/reject", auth, BookingController.rejectUserBooking);
 
-router.post("/v1/bookings/:id/cancel", auth, BookingController.cancelUserBooking);
+// router.post("/v1/bookings/:id/cancel", auth, BookingController.cancelUserBooking);
 
 
 module.exports = router;
