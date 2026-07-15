@@ -1,4 +1,5 @@
 const db = require("../config/db");
+const redis = require("../config/redis");
 
 class Ride {
     static async getAllRides(travelDate = null) {
@@ -41,21 +42,22 @@ class Ride {
 
     static async findRides(data) {
 
-        const cacheKey = "rides_" + Buffer
-            .from(JSON.stringify(data))
-            .toString("base64");
+        // const cacheKey = "rides_" + Buffer
+        //     .from(JSON.stringify(data))
+        //     .toString("base64");
 
-        // Check Redis Cache
-        const cached = await redis.get(cacheKey);
+        // // Check Redis Cache
+        // const cached = await redis.get(cacheKey);
 
-        if (cached) {
-            return JSON.parse(cached);
-        }
+        // if (cached) {
+        //     return JSON.parse(cached);
+        // }
 
         const sql = `
             SELECT
-
                 r.*,
+
+                d.id AS driver_id,
 
                 d.name AS driver_name,
                 d.email AS driver_email,
@@ -64,6 +66,7 @@ class Ride {
                 ud.profile_picture,
                 ud.is_verified,
 
+                v.id AS vehicle_id,
                 v.vehicle_type,
                 v.brand,
                 v.model,
@@ -152,12 +155,12 @@ class Ride {
             fuel_type: ride.fuel_type
         }));
 
-        // Cache for 5 minutes
-        await redis.setEx(
-            cacheKey,
-            300,
-            JSON.stringify(rides)
-        );
+        // // Cache for 5 minutes
+        // await redis.setEx(
+        //     cacheKey,
+        //     300,
+        //     JSON.stringify(rides)
+        // );
 
         return rides;
     }

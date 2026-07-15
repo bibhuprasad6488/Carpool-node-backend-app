@@ -4,6 +4,8 @@ const Role = require('../models/Role');
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const db = require("../config/db"); // mysql2/promise connection
+const transporter = require("../config/mail");
+const APP_URL = process.env.APP_URL;
 
 exports.index = async (req, res) => {
 
@@ -31,7 +33,7 @@ exports.edit = async (req, res) => {
 
         if (!user) {
             return res.status(404).json({
-                success: false,
+                status: "error",
                 message: 'User not found'
             });
         }
@@ -41,7 +43,7 @@ exports.edit = async (req, res) => {
     } catch (error) {
 
         return res.status(500).json({
-            success: false,
+            status: "error",
             message: error.message
         });
 
@@ -240,6 +242,25 @@ exports.register = async (req, res) => {
             WHERE u.id=?`,
             [userId]
         );
+        const userDetails = user[0];
+
+        if (userDetails) {
+            userDetails.profile_picture = userDetails.profile_picture
+                ? `${APP_URL}/uploads/user/${userDetails.profile_picture}`
+                : "";
+            userDetails.driver_license = userDetails.driver_license
+                ? `${APP_URL}/uploads/user/${userDetails.driver_license}`
+                : "";
+            userDetails.adhhar_card = userDetails.adhhar_card
+                ? `${APP_URL}/uploads/user/${userDetails.adhhar_card}`
+                : "";
+            userDetails.pan_card = userDetails.pan_card
+                ? `${APP_URL}/uploads/user/${userDetails.pan_card}`
+                : "";
+            userDetails.bank_account = userDetails.bank_account
+                ? `${APP_URL}/uploads/user/${userDetails.bank_account}`
+                : "";
+        }
 
         const token = jwt.sign(
             {
@@ -275,6 +296,28 @@ exports.register = async (req, res) => {
 
     }
 };
+
+exports.updateUserDetails = async (req, res) => {
+    const {
+        name,
+        email,
+        phone,
+        password,
+        role_id,
+        city,
+        state,
+        country,
+        postal_code,
+        address,
+        bank_account_holder,
+        bank_account_number,
+        bank_account_ifsc,
+        bank_branch_name
+    } = req.body;
+
+
+};
+
 
 exports.checkPhone = async (req, res) => {
     try {

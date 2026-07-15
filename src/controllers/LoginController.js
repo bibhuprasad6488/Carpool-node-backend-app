@@ -11,7 +11,7 @@ exports.userLogin = async (req, res) => {
     try {
         if (!req.body) {
             return res.status(400).json({
-                success: "error",
+                status: "error",
                 message: "Request body is missing."
             });
         }
@@ -20,7 +20,7 @@ exports.userLogin = async (req, res) => {
 
         if (!email || !password) {
             return res.status(422).json({
-                success: "error",
+                status: "error",
                 message: 'Email and password are required'
             });
         }
@@ -29,7 +29,7 @@ exports.userLogin = async (req, res) => {
 
         if (!user) {
             return res.status(401).json({
-                success: "error",
+                status: "error",
                 message: 'Invalid credentials'
             });
         }
@@ -41,7 +41,7 @@ exports.userLogin = async (req, res) => {
 
         if (!isPasswordValid) {
             return res.status(401).json({
-                success: "error",
+                status: "error",
                 message: 'Invalid credentials'
             });
         }
@@ -63,13 +63,14 @@ exports.userLogin = async (req, res) => {
                 : "";
         }
         return res.status(200).json({
-            success: true,
+            status: "success",
             message: 'Login successful',
             token,
             user: {
                 id: user.id,
                 name: user.name,
                 email: user.email,
+                role:user.role,
                 user_details: userDetails,
             }
         });
@@ -77,10 +78,12 @@ exports.userLogin = async (req, res) => {
     } catch (error) {
 
         return res.status(500).json({
-            success: "error",
+            status: "error",
             message: error.message
         });
 
     }
 
 };
+
+

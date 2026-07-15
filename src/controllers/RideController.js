@@ -8,14 +8,14 @@ exports.index = async (req, res) => {
         const rides = await Ride.getAllRides(travel_date);
 
         return res.status(200).json({
-            success: true,
+            status: "success",
             data: rides
         });
     } catch (error) {
         console.error(error);
 
         return res.status(500).json({
-            success: false,
+            status: "error",
             message: "Something went wrong."
         });
     }

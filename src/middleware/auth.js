@@ -8,7 +8,7 @@ module.exports = (req, res, next) => {
 
         if (!authHeader) {
             return res.status(401).json({
-                success: false,
+                status: "error",
                 message: 'Access token required'
             });
         }
@@ -27,7 +27,7 @@ module.exports = (req, res, next) => {
     } catch (error) {
 
         return res.status(401).json({
-            success: false,
+            status: "error",
             message: 'Invalid or expired token'
         });
 

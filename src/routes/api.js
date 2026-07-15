@@ -46,13 +46,31 @@ router.get('/v1/edit-user/:id', auth, UserController.edit);
 |--------------------------------------------------------------------------
 */
 
-// router.get("/v1/vehicles", auth, VehicleController.index);
+router.get("/v1/vehicles", auth, VehicleController.index);
+router.get("/v1/vehicles-list", auth, VehicleController.allVehicleLists);
 
-// router.post("/v1/store-vehicle-data", auth, VehicleController.store);
+router.post("/v1/store-vehicle-data",
+    auth,
+    upload("vehicle").fields([
+        { name: "rc_file", maxCount: 1 },
+        { name: "insurance_file", maxCount: 1 },
+        { name: "front_image", maxCount: 1 },
+        { name: "back_image", maxCount: 1 },
+        { name: "side_image", maxCount: 1 },
+        { name: "number_plate_image", maxCount: 1 }
+    ]), VehicleController.store);
 
-// router.get("/v1/edit-vehicle-data/:id", auth, VehicleController.edit);
+router.get("/v1/edit-vehicle-data/:id", auth, VehicleController.edit);
 
-// router.put("/v1/update-vehicle-data/:id", auth, VehicleController.update);
+router.put("/v1/update-vehicle-data/:id", auth,
+    upload("vehicle").fields([
+        { name: "rc_file", maxCount: 1 },
+        { name: "insurance_file", maxCount: 1 },
+        { name: "front_image", maxCount: 1 },
+        { name: "back_image", maxCount: 1 },
+        { name: "side_image", maxCount: 1 },
+        { name: "number_plate_image", maxCount: 1 }
+    ]), VehicleController.update);
 
 // router.delete("/v1/destroy-vehicle-data/:id", auth, VehicleController.destroy);
 
