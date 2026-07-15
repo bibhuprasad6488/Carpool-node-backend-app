@@ -1,5 +1,8 @@
 const Ride = require("../models/Ride");
 const GoogleMapService = require("../services/GoogleMapService");
+const db = require("../config/db"); // mysql2/promise connection
+const Vehicle = require("../models/Vehicle");
+const User = require("../models/User");
 
 exports.index = async (req, res) => {
     try {
@@ -69,7 +72,7 @@ exports.findRides = async (req, res) => {
 
 exports.searchLocations = async (req, res) => {
     try {
-        const keyword = (req.query.keyword || "").trim();
+        const { keyword } = req.body;
 
         if (!keyword) {
             return res.status(422).json({
@@ -240,27 +243,27 @@ exports.store = async (req, res) => {
             departureTimestamp
         );
 
-        /*
-        Expected Response
-        
-        { polyline, distance, duration_in_traffic}
-        */
+        // /*
+        // Expected Response
 
-        /*
-        |--------------------------------------------------------------------------
-        | Decode Polyline
-        |--------------------------------------------------------------------------
-        */
+        // { polyline, distance, duration_in_traffic}
+        // */
+
+        // /*
+        // |--------------------------------------------------------------------------
+        // | Decode Polyline
+        // |--------------------------------------------------------------------------
+        // */
 
         const routePoints = GoogleMapService.decodePolyline(
             route.polyline
         );
 
-        /*
-        |--------------------------------------------------------------------------
-        | Estimated Arrival Time
-        |--------------------------------------------------------------------------
-        */
+        // /*
+        // |--------------------------------------------------------------------------
+        // | Estimated Arrival Time
+        // |--------------------------------------------------------------------------
+        // */
 
         const estimatedArrival = new Date(
             departureDateTime.getTime() +
@@ -272,11 +275,11 @@ exports.store = async (req, res) => {
             .toTimeString()
             .split(" ")[0];
 
-        /*
-|--------------------------------------------------------------------------
-| Save Source Location (if not exists)
-|--------------------------------------------------------------------------
-*/
+        // /*
+        // |--------------------------------------------------------------------------
+        // | Save Source Location (if not exists)
+        // |--------------------------------------------------------------------------
+        // */
 
         if (source_place_id) {
 
@@ -362,11 +365,11 @@ exports.store = async (req, res) => {
 
         }
 
-        /*
-|--------------------------------------------------------------------------
-| Create Ride
-|--------------------------------------------------------------------------
-*/
+        // /*
+        // |--------------------------------------------------------------------------
+        // | Create Ride
+        // |--------------------------------------------------------------------------
+        // */
 
         const [result] = await connection.execute(
             `
@@ -480,7 +483,7 @@ exports.edit = async (req, res) => {
 
         const { id } = req.params;
 
-        const ride = await Ride.getRideById(id);
+        const ride = await Ride.rideDetailsById(id);
 
         if (!ride) {
             return res.status(404).json({
@@ -505,3 +508,96 @@ exports.edit = async (req, res) => {
 
     }
 };
+
+exports.getRideData = async (req, res) => {
+    try {
+
+        const { id } = req.params;
+        // const { no_of_seats } = req.body;
+
+        const ride = await Ride.rideDetailsById(id);
+
+        if (!ride) {
+            return res.status(404).json({
+                status: "error",
+                message: "Ride not found."
+            });
+        }
+
+        // Calculate total price
+        // ride.total_price = Number(ride.price_per_seat) * Number(no_of_seats);
+
+        // Vehicle Details
+        const vehicleDetails = await Vehicle.getByVehicleId(ride.vehicle_id);
+
+        if (vehicleDetails) {
+            ride.vehicle_details = vehicleDetails;
+        }
+
+        // Driver Details
+        const user = await User.findById(ride.driver_id);
+
+        if (user) {
+
+            const userDetails = await User.getUserDetailsById(user.id);
+
+            ride.driver_details = {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                phone: user.phone,
+                user_details: userDetails
+            };
+        }
+
+        return res.status(200).json({
+            status: "success",
+            ride: rideFormatData(ride)
+        });
+
+    } catch (err) {
+
+        console.error(err);
+        return res.status(500).json({
+            status: "error",
+            message: err.message
+        });
+
+    }
+};
+
+
+// private function for format
+function rideFormatData(ride) {
+    return {
+        id: ride.id,
+        driver_id: ride.driver_id,
+        vehicle_id: ride.vehicle_id,
+        source_address: ride.source_address,
+        source_place_id: ride.source_place_id,
+        destination_address: ride.destination_address,
+        destination_place_id: ride.destination_place_id,
+        source_lat: ride.source_lat,
+        source_lng: ride.source_lng,
+        destination_lat: ride.destination_lat,
+        destination_lng: ride.destination_lng,
+        ride_date: ride.ride_date,
+        departure_time: ride.departure_time,
+        polyline: ride.polyline,
+        distance_meters: ride.distance_meters,
+        duration_seconds: ride.duration_seconds,
+        estimated_reach_time: ride.estimated_reach_time,
+        pet_allowed: ride.pet_allowed,
+        smoking_allowed: ride.smoking_allowed,
+        instant_booking: ride.instant_booking,
+        max_two_in_back: ride.max_two_in_back,
+        price_per_seat: ride.price_per_seat,
+        // total_seats: ride.total_seats,
+        available_seats: ride.available_seats,
+        status: ride.status,
+        // total_price: ride.total_price,
+        vehicle_details: ride.vehicle_details,
+        driver_details: ride.driver_details,
+        // route_points: ride.route_points
+    }
+}

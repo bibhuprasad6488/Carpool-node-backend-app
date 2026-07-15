@@ -1,0 +1,15 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 30
+    },
+    "auditLog": "E:\\Carpool-node-backend-app\\src\\logs\\.a8afce89270f0ecd35e2e697742c5763b887e7c6-audit.json",
+    "files": [
+        {
+            "date": 1784097482382,
+            "name": "E:\\Carpool-node-backend-app\\src\\logs\\log-2026-07-15.log",
+            "hash": "3cf94e41b378dc4f45ffc394bb08c9906262b946aa78cc736d98a58f2f34c673"
+        }
+    ],
+    "hashType": "sha256"
+}

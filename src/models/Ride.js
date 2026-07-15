@@ -187,6 +187,18 @@ class Ride {
 
         return rows.map(row => row.location);
     }
+
+    static async rideDetailsById(id) {
+        const sql = `
+                SELECT *
+                FROM rides
+                WHERE id = ?
+                LIMIT 1
+            `;
+
+        const [rows] = await db.execute(sql, [id]);
+        return rows.length ? rows[0] : null;
+    }
 }
 
 module.exports = Ride;

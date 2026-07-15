@@ -31,6 +31,7 @@ router.post("/v1/verify-otp", UserController.verifyOTP);
 
 router.get('/v1/users', auth, UserController.index);
 router.get('/v1/edit-user/:id', auth, UserController.edit);
+router.get('/v1/get-me', auth, UserController.getLoginUser);
 
 /*
 |--------------------------------------------------------------------------
@@ -84,6 +85,7 @@ router.post('/v1/search-locaton', RideController.searchLocations);
 router.get("/v1/rides", auth, RideController.index);
 router.post("/v1/store-ride-data", auth, RideController.store);
 router.get("/v1/edit-ride-data/:id", auth, RideController.edit);
+router.get("/v1/get-ride-data/:id", auth, RideController.getRideData);
 
 /*
 |--------------------------------------------------------------------------

@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const db = require("../config/db"); // mysql2/promise connection
 const APP_URL = process.env.APP_URL;
 
 exports.userLogin = async (req, res) => {

@@ -1,6 +1,8 @@
 // src/models/User.js
 
 const db = require('../config/db');
+const APP_URL = process.env.APP_URL;
+const uploadPathUrl = `${APP_URL}/uploads/user/`;
 
 class User {
 
@@ -52,6 +54,24 @@ class User {
     `;
 
         const [rows] = await db.execute(sql, [id]);
+
+        if (rows.length) {
+            rows[0].profile_picture = rows[0].profile_picture
+                ? `${APP_URL}/uploads/user/${rows[0].profile_picture}`
+                : "";
+            rows[0].driver_license = rows[0].driver_license
+                ? `${APP_URL}/uploads/user/${rows[0].driver_license}`
+                : "";
+            rows[0].adhhar_card = rows[0].adhhar_card
+                ? `${APP_URL}/uploads/user/${rows[0].adhhar_card}`
+                : "";
+            rows[0].pan_card = rows[0].pan_card
+                ? `${APP_URL}/uploads/user/${rows[0].pan_card}`
+                : "";
+            rows[0].bank_account = rows[0].bank_account
+                ? `${APP_URL}/uploads/user/${rows[0].bank_account}`
+                : "";
+        }
 
         return rows.length ? rows[0] : null;
     }

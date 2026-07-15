@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const Role = require('../models/Role');
+const logger = require("../config/logger");
 
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
@@ -546,6 +547,52 @@ exports.passwordReset = async (req, res) => {
     }
 
 };
+
+exports.getLoginUser = async (req, res) => {
+    const userId = req.user.id;
+
+    try {
+
+
+        const user = await User.findById(userId);
+
+        if (!user) {
+            return res.status(404).json({
+                status: "error",
+                message: 'User not found'
+            });
+        }
+
+        const userDetails = await User.getUserDetailsById(userId);
+
+        if (userDetails) {
+            user.user_details = userDetails;
+        }
+
+        return res.status(200).json({
+            status: 'success',
+            user: {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                phone: user.phone,
+                role: user.role,
+                is_verified: user.is_verified,
+                status: user.status,
+                user_details: userDetails,
+            }
+        });
+    } catch (error) {
+        logger.error({
+            message: "Unable to fetch"
+        })
+        return res.status(500).json({
+            status: 'success',
+            message: "Unable to fetch"
+        });
+    }
+};
+
 
 exports.logout = async (req, res) => {
 
