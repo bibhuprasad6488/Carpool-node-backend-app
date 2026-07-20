@@ -480,9 +480,7 @@ exports.store = async (req, res) => {
 
 exports.edit = async (req, res) => {
     try {
-
         const { id } = req.params;
-
         const ride = await Ride.rideDetailsById(id);
 
         if (!ride) {

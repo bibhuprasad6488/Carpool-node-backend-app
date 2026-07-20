@@ -13,9 +13,9 @@ class Ride {
                 u.phone AS driver_phone,
 
                 v.id AS vehicle_id,
-                v.vehicle_name,
-                v.vehicle_number,
-                v.vehicle_type
+                v.model,
+                v.registration_number,
+                v.fuel_types
 
             FROM rides r
 
@@ -32,11 +32,8 @@ class Ride {
             sql += ` WHERE r.ride_date = ?`;
             params.push(travelDate);
         }
-
         sql += ` ORDER BY r.id DESC`;
-
         const [rows] = await db.execute(sql, params);
-
         return rows;
     }
 
@@ -55,7 +52,7 @@ class Ride {
 
         const sql = `
             SELECT
-                r.*,
+                r.*, 
 
                 d.id AS driver_id,
 
