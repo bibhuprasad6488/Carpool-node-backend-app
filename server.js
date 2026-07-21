@@ -27,12 +27,15 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static("public"));
 
+const errorHandler = require("./src/middleware/errorMiddleware");
 
 const webRoutes = require('./src/routes/web');
 const apiRoutes = require('./src/routes/api');
+const adminRoutes = require('./src/routes/admin')
 
 app.use('/', webRoutes);
 app.use('/api', apiRoutes);
+app.use('/admin', adminRoutes)
 // Create HTTP Server
 const server = http.createServer(app);
 
@@ -41,6 +44,8 @@ const socket = require("./src/sockets");
 socket.init(server);
 
 const PORT = process.env.PORT || 3000;
+
+app.use(errorHandler);
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
