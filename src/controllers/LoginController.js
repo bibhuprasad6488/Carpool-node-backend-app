@@ -8,7 +8,7 @@ const APP_URL = process.env.APP_URL;
 const formatUrl = (filePath) => {
     if (!filePath) return "";
     if (filePath.startsWith("http://") || filePath.startsWith("https://")) {
-        return filePath; // Cloudinary URL—leave as is
+        return filePath;
     }
     return `${APP_URL}/uploads/user/${filePath}`;
 };
@@ -50,7 +50,6 @@ exports.userLogin = async (req, res) => {
         userDetails.bank_account = formatUrl(userDetails.bank_account);
     }
 
-    console.log(userDetails)
     return res.status(200).json({
         status: "success",
         message: "Login successful",

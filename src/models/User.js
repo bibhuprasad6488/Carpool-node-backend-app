@@ -2,7 +2,6 @@
 
 const db = require("../config/db");
 const APP_URL = process.env.APP_URL;
-const uploadPathUrl = `${APP_URL}/uploads/user/`;
 
 class User {
   static async getAll() {
@@ -10,21 +9,17 @@ class User {
 
     return users;
   }
-
   static async findById(id) {
     const [users] = await db.query("SELECT * FROM users WHERE id = ?", [id]);
-
     return users[0];
   }
 
   static async create(data) {
     const { name, email } = data;
-
     const [result] = await db.query(
       "INSERT INTO users (name, email) VALUES (?, ?)",
       [name, email],
     );
-
     return result.insertId;
   }
 
@@ -49,22 +44,7 @@ class User {
 
     if (rows.length) {
       const details = rows[0];
-
-      // Helper to format URLs without double-prefixing Cloudinary links
-      const formatUrl = (filePath) => {
-        if (!filePath) return "";
-        if (filePath.startsWith("http://") || filePath.startsWith("https://")) {
-          return filePath;
-        }
-        return `${APP_URL}/uploads/user/${filePath}`;
-      };
-
-      details.profile_picture = formatUrl(details.profile_picture);
-      details.driver_license = formatUrl(details.driver_license);
-      details.adhhar_card = formatUrl(details.adhhar_card);
-      details.pan_card = formatUrl(details.pan_card);
-      details.bank_account = formatUrl(details.bank_account);
-
+      console.log(details);
       return details;
     }
 

@@ -6,7 +6,7 @@ const formatUrl = (filePath) => {
     if (filePath.startsWith("http://") || filePath.startsWith("https://")) {
         return filePath;
     }
-    return `${process.env.APP_URL}/uploads/vehicle/${filePath}`; // Legacy local file fallback
+    return `${process.env.APP_URL}/uploads/vehicle/${filePath}`;
 };
 
 exports.index = async (req, res) => {

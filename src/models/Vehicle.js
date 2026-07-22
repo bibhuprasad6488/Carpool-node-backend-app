@@ -42,7 +42,7 @@ class Vehicle {
         if (filePath.startsWith("http://") || filePath.startsWith("https://")) {
           return filePath;
         }
-        return `${process.env.APP_URL}/uploads/vehicle/${filePath}`; // Legacy local fallback
+        return `${process.env.APP_URL}/uploads/vehicle/${filePath}`;
       };
 
       vehicle.rc_file = formatUrl(vehicle.rc_file);
