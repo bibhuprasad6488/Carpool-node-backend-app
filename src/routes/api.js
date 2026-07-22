@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 
+const uploadCloudinary = require("../middleware/uploadMiddleware");
+
 const auth = require('../middleware/auth');
 const upload = require('../middleware/upload');
 const LoginController = require('../controllers/LoginController');
@@ -14,7 +16,7 @@ router.get('/v1/get-roles', UserController.getRoles)
 
 router.post(
     "/v1/register",
-    upload("user").fields([
+    uploadCloudinary.fields([
         { name: "driver_license", maxCount: 1 },
         { name: "adhhar_card", maxCount: 1 },
         { name: "pan_card", maxCount: 1 },
@@ -24,7 +26,7 @@ router.post(
     UserController.register
 );
 
-router.post('/v1/login', upload("user").none(), LoginController.userLogin);
+router.post('/v1/login', uploadCloudinary.none(), LoginController.userLogin);
 router.post("/v1/forgot-password", UserController.passwordReset);
 router.post("/v1/send-otp", UserController.sendOTP);
 router.post("/v1/verify-otp", UserController.verifyOTP);
