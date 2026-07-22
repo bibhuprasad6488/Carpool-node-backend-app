@@ -85,7 +85,7 @@ router.post('/v1/search-locaton', RideController.searchLocations);
 router.get("/v1/rides", auth, RideController.index);
 router.post("/v1/store-ride-data", auth, RideController.store);
 router.get("/v1/edit-ride-data/:id", auth, RideController.edit);
-router.get("/v1/get-ride-data/:id", auth, RideController.getRideData);
+router.get("/v1/get-ride-data/:id", RideController.getRideData);
 
 /*
 |--------------------------------------------------------------------------
