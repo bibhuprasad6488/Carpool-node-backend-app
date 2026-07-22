@@ -25,38 +25,37 @@ class Vehicle {
 
   static async getByVehicleId(id) {
     const sql = `
-            SELECT *
-            FROM vehicles WHERE id = ? LIMIT 1`;
+        SELECT *
+        FROM vehicles 
+        WHERE id = ? 
+        LIMIT 1
+    `;
 
     const [rows] = await db.execute(sql, [id]);
 
     if (rows.length) {
-      rows[0].rc_file = rows[0].rc_file
-        ? `${process.env.APP_URL}/uploads/vehicle/${rows[0].rc_file}`
-        : "";
+      const vehicle = rows[0];
 
-      rows[0].insurance_file = rows[0].insurance_file
-        ? `${process.env.APP_URL}/uploads/vehicle/${rows[0].insurance_file}`
-        : "";
+      // Helper to format URLs without double-prefixing Cloudinary links
+      const formatUrl = (filePath) => {
+        if (!filePath) return "";
+        if (filePath.startsWith("http://") || filePath.startsWith("https://")) {
+          return filePath;
+        }
+        return `${process.env.APP_URL}/uploads/vehicle/${filePath}`; // Legacy local fallback
+      };
 
-      rows[0].front_image = rows[0].front_image
-        ? `${process.env.APP_URL}/uploads/vehicle/${rows[0].front_image}`
-        : "";
+      vehicle.rc_file = formatUrl(vehicle.rc_file);
+      vehicle.insurance_file = formatUrl(vehicle.insurance_file);
+      vehicle.front_image = formatUrl(vehicle.front_image);
+      vehicle.back_image = formatUrl(vehicle.back_image);
+      vehicle.side_image = formatUrl(vehicle.side_image);
+      vehicle.number_plate_image = formatUrl(vehicle.number_plate_image);
 
-      rows[0].back_image = rows[0].back_image
-        ? `${process.env.APP_URL}/uploads/vehicle/${rows[0].back_image}`
-        : "";
-
-      rows[0].side_image = rows[0].side_image
-        ? `${process.env.APP_URL}/uploads/vehicle/${rows[0].side_image}`
-        : "";
-
-      rows[0].number_plate_image = rows[0].number_plate_image
-        ? `${process.env.APP_URL}/uploads/vehicle/${rows[0].number_plate_image}`
-        : "";
+      return vehicle;
     }
 
-    return rows.length ? rows[0] : null;
+    return null;
   }
 
   static async createVehicle(vehicleData) {
