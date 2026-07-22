@@ -1,12 +1,16 @@
-
 const db = require("../config/db");
-const fs = require("fs");
-const path = require("path");
 const Vehicle = require("../models/Vehicle");
+
+const formatUrl = (filePath) => {
+    if (!filePath) return "";
+    if (filePath.startsWith("http://") || filePath.startsWith("https://")) {
+        return filePath;
+    }
+    return `${process.env.APP_URL}/uploads/vehicle/${filePath}`; // Legacy local file fallback
+};
 
 exports.index = async (req, res) => {
     try {
-
         const userId = req.user.id;
 
         if (!userId) {
@@ -14,24 +18,19 @@ exports.index = async (req, res) => {
         }
 
         const vehicles = await Vehicle.getByUserId(userId);
-
         const response = vehicles.map(formatVehicleDetails);
 
         return res.json(response);
-
     } catch (err) {
-
         return res.status(500).json({
             status: "error",
             message: err.message
         });
-
     }
 };
 
 exports.allVehicleLists = async (req, res) => {
     try {
-
         const userId = req.user.id;
 
         if (!userId) {
@@ -48,101 +47,100 @@ exports.allVehicleLists = async (req, res) => {
                 brand: vehicle.brand,
                 model: vehicle.model,
                 registration_number: vehicle.registration_number,
-
             };
         });
 
         return res.json(response);
-
     } catch (err) {
-
         return res.status(500).json({
             status: "error",
             message: err.message
         });
-
     }
 };
 
 exports.store = async (req, res) => {
-  const {
-    brand,
-    model,
-    manufacture_year,
-    registration_number,
-    color,
-    seats,
-    available_seats,
-    fuel_type,
-    rc_number,
-    rc_expiry_date,
-    insurance_provider,
-    policy_number,
-    insurance_expiry,
-    vehicle_type
-  } = req.body;
+  try {
+    const {
+      brand,
+      model,
+      manufacture_year,
+      registration_number,
+      color,
+      seats,
+      available_seats,
+      fuel_type,
+      rc_number,
+      rc_expiry_date,
+      insurance_provider,
+      policy_number,
+      insurance_expiry,
+      vehicle_type
+    } = req.body;
 
-  // Securely get user_id from auth middleware
-  const user_id = req.user.id;
+    const user_id = req.user.id;
 
-  // Custom Validations
-  if (!brand) return res.status(422).json({ status: "error", message: "Brand is required" });
-  if (!model) return res.status(422).json({ status: "error", message: "Model is required" });
-  if (!manufacture_year) return res.status(422).json({ status: "error", message: "Manufacture year is required" });
-  if (!registration_number) return res.status(422).json({ status: "error", message: "Registration number is required" });
-  if (!color) return res.status(422).json({ status: "error", message: "Color is required" });
-  if (!seats) return res.status(422).json({ status: "error", message: "Seats are required" });
-  if (!fuel_type) return res.status(422).json({ status: "error", message: "Fuel type is required" });
-  if (!rc_number) return res.status(422).json({ status: "error", message: "RC Number is required" });
+    // Custom Validations
+    if (!brand) return res.status(422).json({ status: "error", message: "Brand is required" });
+    if (!model) return res.status(422).json({ status: "error", message: "Model is required" });
+    if (!manufacture_year) return res.status(422).json({ status: "error", message: "Manufacture year is required" });
+    if (!registration_number) return res.status(422).json({ status: "error", message: "Registration number is required" });
+    if (!color) return res.status(422).json({ status: "error", message: "Color is required" });
+    if (!seats) return res.status(422).json({ status: "error", message: "Seats are required" });
+    if (!fuel_type) return res.status(422).json({ status: "error", message: "Fuel type is required" });
+    if (!rc_number) return res.status(422).json({ status: "error", message: "RC Number is required" });
 
-  // Extract Cloudinary HTTPS URLs directly using .path
-  const rc_file = req.files?.rc_file?.[0]?.path || null;
-  const insurance_file = req.files?.insurance_file?.[0]?.path || null;
-  const front_image = req.files?.front_image?.[0]?.path || null;
-  const back_image = req.files?.back_image?.[0]?.path || null;
-  const side_image = req.files?.side_image?.[0]?.path || null;
-  const number_plate_image = req.files?.number_plate_image?.[0]?.path || null;
+    // Extract Cloudinary HTTPS URLs directly using .path
+    const rc_file = req.files?.rc_file?.[0]?.path || null;
+    const insurance_file = req.files?.insurance_file?.[0]?.path || null;
+    const front_image = req.files?.front_image?.[0]?.path || null;
+    const back_image = req.files?.back_image?.[0]?.path || null;
+    const side_image = req.files?.side_image?.[0]?.path || null;
+    const number_plate_image = req.files?.number_plate_image?.[0]?.path || null;
 
-  const vehicleId = await Vehicle.createVehicle({
-    user_id,
-    vehicle_type,
-    brand,
-    model,
-    manufacture_year,
-    registration_number,
-    color,
-    seats,
-    available_seats,
-    fuel_type,
-    rc_number,
-    rc_expiry_date,
-    insurance_provider,
-    policy_number,
-    insurance_expiry,
-    rc_file,
-    insurance_file,
-    front_image,
-    back_image,
-    side_image,
-    number_plate_image
-  });
+    const vehicleId = await Vehicle.createVehicle({
+      user_id,
+      vehicle_type,
+      brand,
+      model,
+      manufacture_year,
+      registration_number,
+      color,
+      seats,
+      available_seats,
+      fuel_type,
+      rc_number,
+      rc_expiry_date,
+      insurance_provider,
+      policy_number,
+      insurance_expiry,
+      rc_file,
+      insurance_file,
+      front_image,
+      back_image,
+      side_image,
+      number_plate_image
+    });
 
-  return res.status(201).json({
-    status: "success",
-    message: "Vehicle added successfully.",
-    vehicle_id: vehicleId
-  });
+    return res.status(201).json({
+      status: "success",
+      message: "Vehicle added successfully.",
+      vehicle_id: vehicleId
+    });
+  } catch (err) {
+    return res.status(500).json({
+        status: "error",
+        message: err.message
+    });
+  }
 };
 
 exports.edit = async (req, res) => {
     try {
-
         const { id } = req.params;
 
         const [rows] = await db.execute(
-            `SELECT * FROM vehicles
-            WHERE id = ?
-            LIMIT 1`,
+            `SELECT * FROM vehicles WHERE id = ? LIMIT 1`,
             [id]
         );
 
@@ -159,27 +157,22 @@ exports.edit = async (req, res) => {
             status: "success",
             vehicle: formatVehicleDetails(vehicle)
         });
-
     } catch (err) {
-
         return res.status(500).json({
             status: "error",
             message: err.message
         });
-
     }
 };
-
 
 exports.update = async (req, res) => {
     const connection = await db.getConnection();
 
     try {
-
         const { id } = req.params;
+        const user_id = req.user.id; // Enforce user ownership
 
         const {
-            user_id,
             vehicle_type,
             brand,
             model,
@@ -196,124 +189,63 @@ exports.update = async (req, res) => {
             insurance_expiry
         } = req.body;
 
-        // Validation
-        if (!user_id)
-            return res.status(422).json({
-                status: "error",
-                message: "User is required"
-            });
+        if (!brand) return res.status(422).json({ status: "error", message: "Brand is required" });
+        if (!model) return res.status(422).json({ status: "error", message: "Model is required" });
 
-        if (!brand)
-            return res.status(422).json({
-                status: "error",
-                message: "Brand is required"
-            });
-
-        if (!model)
-            return res.status(422).json({
-                status: "error",
-                message: "Model is required"
-            });
-
-        // Check Vehicle
+        // Check if vehicle exists and belongs to the authenticated user
         const [vehicleRows] = await connection.query(
-            "SELECT * FROM vehicles WHERE id=? LIMIT 1",
-            [id]
+            "SELECT * FROM vehicles WHERE id=? AND user_id=? LIMIT 1",
+            [id, user_id]
         );
 
         if (!vehicleRows.length) {
             return res.status(404).json({
                 status: "error",
-                message: "Vehicle not found."
+                message: "Vehicle not found or unauthorized."
             });
         }
 
         const vehicle = vehicleRows[0];
 
-        // Unique Registration Number
-        const [registrationExists] = await connection.query(
-            `SELECT id
-                FROM vehicles
-                WHERE registration_number = ?
-                AND id != ?
-                LIMIT 1`,
-            [registration_number, id]
-        );
+        // Unique Registration Number Check
+        if (registration_number) {
+            const [registrationExists] = await connection.query(
+                `SELECT id FROM vehicles WHERE registration_number = ? AND id != ? LIMIT 1`,
+                [registration_number, id]
+            );
 
-        if (registrationExists.length) {
-            return res.status(422).json({
-                status: "error",
-                message: "Registration number already exists."
-            });
+            if (registrationExists.length) {
+                return res.status(422).json({
+                    status: "error",
+                    message: "Registration number already exists."
+                });
+            }
         }
 
-        // Unique RC Number
-        const [rcExists] = await connection.query(
-            `SELECT id
-                FROM vehicles
-                WHERE rc_number = ?
-                AND id != ?
-                LIMIT 1`,
-            [rc_number, id]
-        );
+        // Unique RC Number Check
+        if (rc_number) {
+            const [rcExists] = await connection.query(
+                `SELECT id FROM vehicles WHERE rc_number = ? AND id != ? LIMIT 1`,
+                [rc_number, id]
+            );
 
-        if (rcExists.length) {
-            return res.status(422).json({
-                status: "error",
-                message: "RC Number already exists."
-            });
+            if (rcExists.length) {
+                return res.status(422).json({
+                    status: "error",
+                    message: "RC Number already exists."
+                });
+            }
         }
 
         await connection.beginTransaction();
 
-        const uploadDir = path.join(__dirname, "../public/uploads/vehicle");
-
-        const deleteOldFile = (filename) => {
-            if (!filename) return;
-
-            const filePath = path.join(uploadDir, filename);
-
-            if (fs.existsSync(filePath)) {
-                fs.unlinkSync(filePath);
-            }
-        };
-
-        let rc_file = vehicle.rc_file;
-        let insurance_file = vehicle.insurance_file;
-        let front_image = vehicle.front_image;
-        let back_image = vehicle.back_image;
-        let side_image = vehicle.side_image;
-        let number_plate_image = vehicle.number_plate_image;
-
-        if (req.files?.rc_file?.length) {
-            deleteOldFile(vehicle.rc_file);
-            rc_file = req.files.rc_file[0].filename;
-        }
-
-        if (req.files?.insurance_file?.length) {
-            deleteOldFile(vehicle.insurance_file);
-            insurance_file = req.files.insurance_file[0].filename;
-        }
-
-        if (req.files?.front_image?.length) {
-            deleteOldFile(vehicle.front_image);
-            front_image = req.files.front_image[0].filename;
-        }
-
-        if (req.files?.back_image?.length) {
-            deleteOldFile(vehicle.back_image);
-            back_image = req.files.back_image[0].filename;
-        }
-
-        if (req.files?.side_image?.length) {
-            deleteOldFile(vehicle.side_image);
-            side_image = req.files.side_image[0].filename;
-        }
-
-        if (req.files?.number_plate_image?.length) {
-            deleteOldFile(vehicle.number_plate_image);
-            number_plate_image = req.files.number_plate_image[0].filename;
-        }
+        // Extract new Cloudinary URLs (.path) or retain existing database URLs
+        const rc_file = req.files?.rc_file?.[0]?.path || vehicle.rc_file;
+        const insurance_file = req.files?.insurance_file?.[0]?.path || vehicle.insurance_file;
+        const front_image = req.files?.front_image?.[0]?.path || vehicle.front_image;
+        const back_image = req.files?.back_image?.[0]?.path || vehicle.back_image;
+        const side_image = req.files?.side_image?.[0]?.path || vehicle.side_image;
+        const number_plate_image = req.files?.number_plate_image?.[0]?.path || vehicle.number_plate_image;
 
         await connection.query(
             `UPDATE vehicles SET
@@ -342,14 +274,14 @@ exports.update = async (req, res) => {
             WHERE id=?`,
             [
                 user_id,
-                vehicle_type || "Car",
+                vehicle_type || vehicle.vehicle_type || "Car",
                 brand,
                 model,
                 manufacture_year,
                 registration_number,
                 color,
                 seats,
-                available_seats,
+                available_seats || seats,
                 fuel_type,
                 rc_number,
                 rc_expiry_date,
@@ -374,23 +306,18 @@ exports.update = async (req, res) => {
         });
 
     } catch (err) {
-
         await connection.rollback();
-
         return res.status(500).json({
             status: "error",
             message: err.message
         });
-
     } finally {
-
         connection.release();
-
     }
 };
+
 // Private function to format vehicle details for clean response
 function formatVehicleDetails(vehicle) {
-
     return {
         id: vehicle.id,
         user_id: vehicle.user_id,
@@ -415,29 +342,12 @@ function formatVehicleDetails(vehicle) {
 
         available_seats: vehicle.available_seats,
 
-        rc_file: vehicle.rc_file
-            ? `${process.env.APP_URL}/uploads/vehicle/${vehicle.rc_file}`
-            : "",
-
-        insurance_file: vehicle.insurance_file
-            ? `${process.env.APP_URL}/uploads/vehicle/${vehicle.insurance_file}`
-            : "",
-
-        front_image: vehicle.front_image
-            ? `${process.env.APP_URL}/uploads/vehicle/${vehicle.front_image}`
-            : "",
-
-        back_image: vehicle.back_image
-            ? `${process.env.APP_URL}/uploads/vehicle/${vehicle.back_image}`
-            : "",
-
-        side_image: vehicle.side_image
-            ? `${process.env.APP_URL}/uploads/vehicle/${vehicle.side_image}`
-            : "",
-
-        number_plate_image: vehicle.number_plate_image
-            ? `${process.env.APP_URL}/uploads/vehicle/${vehicle.number_plate_image}`
-            : "",
+        rc_file: formatUrl(vehicle.rc_file),
+        insurance_file: formatUrl(vehicle.insurance_file),
+        front_image: formatUrl(vehicle.front_image),
+        back_image: formatUrl(vehicle.back_image),
+        side_image: formatUrl(vehicle.side_image),
+        number_plate_image: formatUrl(vehicle.number_plate_image),
 
         status: vehicle.status,
 

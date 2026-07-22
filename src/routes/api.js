@@ -100,9 +100,7 @@ router.get("/v1/get-ride-data/:id", RideController.getRideData);
 // router.get("/v1/driver/booking-requests", auth, BookingController.index);
 
 router.post("/v1/create-booking", auth, BookingController.store);
-
 router.post("/v1/payment-success", auth, BookingController.paymentSuccess);
-
 router.post("/v1/payment-failed", auth, BookingController.paymentFailed);
 
 // router.post("/bookings/:bookingId/refund", auth, BookingController.refund);
