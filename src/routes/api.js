@@ -54,14 +54,16 @@ router.get("/v1/vehicles-list", auth, VehicleController.allVehicleLists);
 
 router.post("/v1/store-vehicle-data",
     auth,
-    upload("vehicle").fields([
+    uploadCloudinary.fields([ 
         { name: "rc_file", maxCount: 1 },
         { name: "insurance_file", maxCount: 1 },
         { name: "front_image", maxCount: 1 },
         { name: "back_image", maxCount: 1 },
         { name: "side_image", maxCount: 1 },
         { name: "number_plate_image", maxCount: 1 }
-    ]), VehicleController.store);
+    ]), 
+    VehicleController.store
+);
 
 router.get("/v1/edit-vehicle-data/:id", auth, VehicleController.edit);
 

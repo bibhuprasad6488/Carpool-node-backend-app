@@ -65,206 +65,73 @@ exports.allVehicleLists = async (req, res) => {
 };
 
 exports.store = async (req, res) => {
-    const connection = await db.getConnection();
+  const {
+    brand,
+    model,
+    manufacture_year,
+    registration_number,
+    color,
+    seats,
+    available_seats,
+    fuel_type,
+    rc_number,
+    rc_expiry_date,
+    insurance_provider,
+    policy_number,
+    insurance_expiry,
+    vehicle_type
+  } = req.body;
 
-    try {
+  // Securely get user_id from auth middleware
+  const user_id = req.user.id;
 
-        const {
-            user_id,
-            vehicle_type,
-            brand,
-            model,
-            manufacture_year,
-            registration_number,
-            color,
-            seats,
-            available_seats,
-            fuel_type,
-            rc_number,
-            rc_expiry_date,
-            insurance_provider,
-            policy_number,
-            insurance_expiry
-        } = req.body;
+  // Custom Validations
+  if (!brand) return res.status(422).json({ status: "error", message: "Brand is required" });
+  if (!model) return res.status(422).json({ status: "error", message: "Model is required" });
+  if (!manufacture_year) return res.status(422).json({ status: "error", message: "Manufacture year is required" });
+  if (!registration_number) return res.status(422).json({ status: "error", message: "Registration number is required" });
+  if (!color) return res.status(422).json({ status: "error", message: "Color is required" });
+  if (!seats) return res.status(422).json({ status: "error", message: "Seats are required" });
+  if (!fuel_type) return res.status(422).json({ status: "error", message: "Fuel type is required" });
+  if (!rc_number) return res.status(422).json({ status: "error", message: "RC Number is required" });
 
-        // Validation
-        if (!user_id)
-            return res.status(422).json({
-                status: "error",
-                message: "User is required"
-            });
+  // Extract Cloudinary HTTPS URLs directly using .path
+  const rc_file = req.files?.rc_file?.[0]?.path || null;
+  const insurance_file = req.files?.insurance_file?.[0]?.path || null;
+  const front_image = req.files?.front_image?.[0]?.path || null;
+  const back_image = req.files?.back_image?.[0]?.path || null;
+  const side_image = req.files?.side_image?.[0]?.path || null;
+  const number_plate_image = req.files?.number_plate_image?.[0]?.path || null;
 
-        if (!brand)
-            return res.status(422).json({
-                status: "error",
-                message: "Brand is required"
-            });
+  const vehicleId = await Vehicle.createVehicle({
+    user_id,
+    vehicle_type,
+    brand,
+    model,
+    manufacture_year,
+    registration_number,
+    color,
+    seats,
+    available_seats,
+    fuel_type,
+    rc_number,
+    rc_expiry_date,
+    insurance_provider,
+    policy_number,
+    insurance_expiry,
+    rc_file,
+    insurance_file,
+    front_image,
+    back_image,
+    side_image,
+    number_plate_image
+  });
 
-        if (!model)
-            return res.status(422).json({
-                status: "error",
-                message: "Model is required"
-            });
-
-        if (!manufacture_year)
-            return res.status(422).json({
-                status: "error",
-                message: "Manufacture year is required"
-            });
-
-        if (!registration_number)
-            return res.status(422).json({
-                status: "error",
-                message: "Registration number is required"
-            });
-
-        if (!color)
-            return res.status(422).json({
-                status: "error",
-                message: "Color is required"
-            });
-
-        if (!seats)
-            return res.status(422).json({
-                status: "error",
-                message: "Seats are required"
-            });
-
-        if (!fuel_type)
-            return res.status(422).json({
-                status: "error",
-                message: "Fuel type is required"
-            });
-
-        if (!rc_number)
-            return res.status(422).json({
-                status: "error",
-                message: "RC Number is required"
-            });
-
-        // Check user
-        const [user] = await connection.query(
-            "SELECT id FROM users WHERE id=? LIMIT 1",
-            [user_id]
-        );
-
-        if (!user.length) {
-            return res.status(422).json({
-                status: "error",
-                message: "Invalid user."
-            });
-        }
-
-        // Registration Number Exists
-        const [vehicle] = await connection.query(
-            "SELECT id FROM vehicles WHERE registration_number=? LIMIT 1",
-            [registration_number]
-        );
-
-        if (vehicle.length) {
-            return res.status(422).json({
-                status: "error",
-                message: "Registration number already exists."
-            });
-        }
-
-        // RC Exists
-        const [rc] = await connection.query(
-            "SELECT id FROM vehicles WHERE rc_number=? LIMIT 1",
-            [rc_number]
-        );
-
-        if (rc.length) {
-            return res.status(422).json({
-                status: "error",
-                message: "RC Number already exists."
-            });
-        }
-
-        await connection.beginTransaction();
-
-        const rc_file = req.files?.rc_file?.[0]?.filename || null;
-        const insurance_file = req.files?.insurance_file?.[0]?.filename || null;
-        const front_image = req.files?.front_image?.[0]?.filename || null;
-        const back_image = req.files?.back_image?.[0]?.filename || null;
-        const side_image = req.files?.side_image?.[0]?.filename || null;
-        const number_plate_image = req.files?.number_plate_image?.[0]?.filename || null;
-
-        await connection.query(
-            `INSERT INTO vehicles
-            (
-                user_id,
-                vehicle_type,
-                brand,
-                model,
-                manufacture_year,
-                registration_number,
-                color,
-                seats,
-                available_seats,
-                fuel_type,
-                rc_number,
-                rc_expiry_date,
-                insurance_provider,
-                policy_number,
-                insurance_expiry,
-                rc_file,
-                insurance_file,
-                front_image,
-                back_image,
-                side_image,
-                number_plate_image,
-                created_at,
-                updated_at
-            )
-            VALUES
-            (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
-            [
-                user_id,
-                vehicle_type || "Car",
-                brand,
-                model,
-                manufacture_year,
-                registration_number,
-                color,
-                seats,
-                available_seats,
-                fuel_type,
-                rc_number,
-                rc_expiry_date,
-                insurance_provider,
-                policy_number,
-                insurance_expiry,
-                rc_file,
-                insurance_file,
-                front_image,
-                back_image,
-                side_image,
-                number_plate_image
-            ]
-        );
-
-        await connection.commit();
-
-        return res.status(201).json({
-            status: "success",
-            message: "Vehicle data stored successfully"
-        });
-
-    } catch (err) {
-
-        await connection.rollback();
-
-        return res.status(500).json({
-            status: "error",
-            message: err.message
-        });
-
-    } finally {
-
-        connection.release();
-
-    }
+  return res.status(201).json({
+    status: "success",
+    message: "Vehicle added successfully.",
+    vehicle_id: vehicleId
+  });
 };
 
 exports.edit = async (req, res) => {
