@@ -1,1 +1,36 @@
 [2026-07-22 10:47:24] ERROR: Unable to fetch
+[2026-07-22 11:58:44] ERROR: Unable to fetch
+[2026-07-22 11:58:55] ERROR: Unable to fetch
+[2026-07-22 11:59:09] ERROR: Unable to fetch
+[2026-07-22 12:00:30] ERROR: Unable to fetch
+[2026-07-22 12:00:34] ERROR: Unable to fetch
+[2026-07-22 12:00:56] ERROR: Unable to fetch
+[2026-07-22 12:01:36] ERROR: Unable to fetch
+[2026-07-22 12:01:56] ERROR: Unable to fetch
+[2026-07-22 12:02:02] ERROR: Unable to fetch
+[2026-07-22 12:02:22] ERROR: Unable to fetch
+[2026-07-22 12:02:27] ERROR: Unable to fetch
+[2026-07-22 12:02:40] ERROR: Unable to fetch
+[2026-07-22 12:02:43] ERROR: Unable to fetch
+[2026-07-22 12:04:09] ERROR: Unable to fetch
+[2026-07-22 12:04:15] ERROR: Unable to fetch
+[2026-07-22 12:08:46] ERROR: Unable to fetch
+[2026-07-22 12:08:47] ERROR: Unable to fetch
+[2026-07-22 12:08:47] ERROR: Unable to fetch
+[2026-07-22 12:08:47] ERROR: Unable to fetch
+[2026-07-22 12:08:47] ERROR: Unable to fetch
+[2026-07-22 12:08:47] ERROR: Unable to fetch
+[2026-07-22 12:09:35] ERROR: Error: connect ETIMEDOUT
+    at PoolConnection._handleTimeoutError (E:\Carpool-node-backend-app\node_modules\mysql2\lib\base\connection.js:244:17)
+    at listOnTimeout (node:internal/timers:605:17)
+    at process.processTimers (node:internal/timers:541:7)
+[2026-07-22 12:10:16] ERROR: Error: connect ETIMEDOUT
+    at PoolConnection._handleTimeoutError (E:\Carpool-node-backend-app\node_modules\mysql2\lib\base\connection.js:244:17)
+    at listOnTimeout (node:internal/timers:605:17)
+    at process.processTimers (node:internal/timers:541:7)
+[2026-07-22 12:10:54] ERROR: Unable to fetch
+[2026-07-22 12:10:54] ERROR: Unable to fetch
+[2026-07-22 12:10:54] ERROR: Unable to fetch
+[2026-07-22 12:10:54] ERROR: Unable to fetch
+[2026-07-22 12:10:54] ERROR: Unable to fetch
+[2026-07-22 12:10:54] ERROR: Unable to fetch

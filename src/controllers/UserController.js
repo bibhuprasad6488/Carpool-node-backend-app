@@ -48,7 +48,7 @@ exports.getRoles = async (req, res) => {
     console.error(err);
     return res.status(500).json({
       status: "error",
-      message: err.message,
+      message: "Unable to fetch roles",
     });
   }
 };
