@@ -4,9 +4,9 @@ const redis = require("../config/redis");
 const formatProfileUrl = (filePath) => {
   if (!filePath) return "";
   if (filePath.startsWith("http://") || filePath.startsWith("https://")) {
-    return filePath; 
+    return filePath;
   }
-  return `${process.env.APP_URL}/uploads/user/${filePath}`; 
+  return `${process.env.APP_URL}/uploads/user/${filePath}`;
 };
 
 class Ride {
@@ -344,7 +344,9 @@ class Ride {
     return rows.length ? rows[0] : null;
   }
 
-  static async getUpcomingRides() {
+  static async getNearestUpcomingRides(userLat, userLng, limit = 6) {
+    // Haversine formula calculation for distance in KM:
+    // (6371 * acos(cos(radians(userLat)) * cos(radians(source_lat)) * cos(radians(source_lng) - radians(userLng)) + sin(radians(userLat)) * sin(radians(source_lat))))
     const sql = `
       SELECT
         r.*, 
@@ -360,23 +362,41 @@ class Ride {
         v.model,
         v.manufacture_year,
         v.registration_number,
-        v.fuel_type
+        v.fuel_type,
+        (
+          6371 * acos(
+            cos(radians(?)) * cos(radians(r.source_lat)) *
+            cos(radians(r.source_lng) - radians(?)) +
+            sin(radians(?)) * sin(radians(r.source_lat))
+          )
+        ) AS distance_km
       FROM rides r
       INNER JOIN users d ON d.id = r.driver_id
       LEFT JOIN user_details ud ON ud.user_id = d.id
       LEFT JOIN vehicles v ON v.id = r.vehicle_id
       WHERE
-        -- Filter future or today's upcoming rides
+        -- Filter upcoming rides
         TIMESTAMP(r.ride_date, r.departure_time) >= NOW()
         AND r.available_seats > 0
         AND r.status = 'scheduled'
-      ORDER BY r.ride_date ASC, r.departure_time ASC
+      -- Order primarily by closest proximity to coordinates, secondarily by ride date
+      ORDER BY distance_km ASC, r.ride_date ASC, r.departure_time ASC
+      LIMIT ?
     `;
 
-    const [rows] = await db.execute(sql);
+    // Ensure parameters are parsed as numbers
+    const params = [
+      parseFloat(userLat),
+      parseFloat(userLng),
+      parseFloat(userLat),
+      parseInt(limit, 10),
+    ];
+
+    const [rows] = await db.execute(sql, params);
 
     return rows.map((ride) => ({
       id: ride.id,
+      distance_km: Math.round(ride.distance_km * 10) / 10, // Distance rounded to 1 decimal place (e.g. 2.4 km)
       source_address: ride.source_address,
       destination_address: ride.destination_address,
       source_lat: ride.source_lat,

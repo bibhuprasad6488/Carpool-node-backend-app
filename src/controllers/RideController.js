@@ -257,9 +257,22 @@ exports.getRideData = async (req, res) => {
 
 exports.getUpcomingRides = async (req, res) => {
   try {
-    const rides = await Ride.getUpcomingRides();
+    let { lat, lng } = req.query;
+
+    if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
+      lat = process.env.DEFAULT_LAT || 20.2961; 
+      lng = process.env.DEFAULT_LNG || 85.8245;
+    }
+
+    const rides = await Ride.getNearestUpcomingRides(lat, lng, 6);
+
     return res.status(200).json({
       status: "success",
+      applied_coordinates: {
+        latitude: parseFloat(lat),
+        longitude: parseFloat(lng),
+        is_fallback: !req.query.lat || !req.query.lng
+      },
       count: rides.length,
       rides: rides,
     });
