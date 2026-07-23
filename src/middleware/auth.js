@@ -14,7 +14,7 @@ module.exports = (req, res, next) => {
 
         // 2. Extract token safely
         const token = authHeader.split(' ')[1];
-
+        
         if (!token) {
             return res.status(401).json({
                 status: "error",

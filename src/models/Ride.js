@@ -1,6 +1,14 @@
 const db = require("../config/db");
 const redis = require("../config/redis");
 
+const formatProfileUrl = (filePath) => {
+  if (!filePath) return "";
+  if (filePath.startsWith("http://") || filePath.startsWith("https://")) {
+    return filePath; 
+  }
+  return `${process.env.APP_URL}/uploads/user/${filePath}`; 
+};
+
 class Ride {
   static async getAllRides(travelDate = null) {
     let sql = `
@@ -334,6 +342,74 @@ class Ride {
 
     const [rows] = await db.execute(sql, [id]);
     return rows.length ? rows[0] : null;
+  }
+
+  static async getUpcomingRides() {
+    const sql = `
+      SELECT
+        r.*, 
+        d.id AS driver_id,
+        d.name AS driver_name,
+        d.email AS driver_email,
+        d.phone AS driver_phone,
+        ud.profile_picture,
+        ud.is_verified,
+        v.id AS vehicle_id,
+        v.vehicle_type,
+        v.brand,
+        v.model,
+        v.manufacture_year,
+        v.registration_number,
+        v.fuel_type
+      FROM rides r
+      INNER JOIN users d ON d.id = r.driver_id
+      LEFT JOIN user_details ud ON ud.user_id = d.id
+      LEFT JOIN vehicles v ON v.id = r.vehicle_id
+      WHERE
+        -- Filter future or today's upcoming rides
+        TIMESTAMP(r.ride_date, r.departure_time) >= NOW()
+        AND r.available_seats > 0
+        AND r.status = 'scheduled'
+      ORDER BY r.ride_date ASC, r.departure_time ASC
+    `;
+
+    const [rows] = await db.execute(sql);
+
+    return rows.map((ride) => ({
+      id: ride.id,
+      source_address: ride.source_address,
+      destination_address: ride.destination_address,
+      source_lat: ride.source_lat,
+      source_lng: ride.source_lng,
+      destination_lat: ride.destination_lat,
+      destination_lng: ride.destination_lng,
+      ride_date: ride.ride_date,
+      departure_time: ride.departure_time,
+      distance_meters: ride.distance_meters,
+      duration_seconds: ride.duration_seconds,
+      estimated_reach_time: ride.estimated_reach_time,
+      pet_allowed: ride.pet_allowed,
+      smoking_allowed: ride.smoking_allowed,
+      instant_booking: ride.instant_booking,
+      max_two_in_back: ride.max_two_in_back,
+      price_per_seat: ride.price_per_seat,
+      total_seats: ride.total_seats,
+      available_seats: ride.available_seats,
+      status: ride.status,
+      driver_id: ride.driver_id,
+      driver_name: ride.driver_name,
+      driver_email: ride.driver_email,
+      driver_phone: ride.driver_phone,
+      driver_profile_picture: formatProfileUrl(ride.profile_picture),
+      driver_is_verified: ride.is_verified,
+      vehicle_id: ride.vehicle_id,
+      vehicle_type: ride.vehicle_type,
+      brand: ride.brand,
+      model: ride.model,
+      manufacture_year: ride.manufacture_year,
+      registration_number: ride.registration_number,
+      fuel_type: ride.fuel_type,
+    }));
   }
 }
 

@@ -85,6 +85,7 @@ router.put("/v1/update-vehicle-data/:id", auth,
 |--------------------------------------------------------------------------
 */
 router.post("/v1/find-rides", RideController.findRides);
+router.get("/v1/rides/upcoming", RideController.getUpcomingRides);
 router.post('/v1/search-locaton', RideController.searchLocations);
 router.get("/v1/rides", auth, RideController.index);
 router.post("/v1/store-ride-data", auth, RideController.store);

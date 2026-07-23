@@ -255,6 +255,22 @@ exports.getRideData = async (req, res) => {
   }
 };
 
+exports.getUpcomingRides = async (req, res) => {
+  try {
+    const rides = await Ride.getUpcomingRides();
+    return res.status(200).json({
+      status: "success",
+      count: rides.length,
+      rides: rides,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: "error",
+      message: error.message,
+    });
+  }
+};
+
 // private function for format
 function rideFormatData(ride) {
   return {
