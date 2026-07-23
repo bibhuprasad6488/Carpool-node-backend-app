@@ -345,8 +345,10 @@ class Ride {
   }
 
   static async getNearestUpcomingRides(userLat, userLng, limit = 6) {
-    // Haversine formula calculation for distance in KM:
-    // (6371 * acos(cos(radians(userLat)) * cos(radians(source_lat)) * cos(radians(source_lng) - radians(userLng)) + sin(radians(userLat)) * sin(radians(source_lat))))
+    const parsedLat = parseFloat(userLat);
+    const parsedLng = parseFloat(userLng);
+    const parsedLimit = parseInt(limit, 10) || 6;
+
     const sql = `
       SELECT
         r.*, 
@@ -365,9 +367,11 @@ class Ride {
         v.fuel_type,
         (
           6371 * acos(
-            cos(radians(?)) * cos(radians(r.source_lat)) *
-            cos(radians(r.source_lng) - radians(?)) +
-            sin(radians(?)) * sin(radians(r.source_lat))
+            LEAST(1.0, GREATEST(-1.0, 
+              cos(radians(?)) * cos(radians(r.source_lat)) *
+              cos(radians(r.source_lng) - radians(?)) +
+              sin(radians(?)) * sin(radians(r.source_lat))
+            ))
           )
         ) AS distance_km
       FROM rides r
@@ -375,28 +379,21 @@ class Ride {
       LEFT JOIN user_details ud ON ud.user_id = d.id
       LEFT JOIN vehicles v ON v.id = r.vehicle_id
       WHERE
-        -- Filter upcoming rides
         TIMESTAMP(r.ride_date, r.departure_time) >= NOW()
         AND r.available_seats > 0
         AND r.status = 'scheduled'
-      -- Order primarily by closest proximity to coordinates, secondarily by ride date
       ORDER BY distance_km ASC, r.ride_date ASC, r.departure_time ASC
-      LIMIT ?
+      LIMIT ${parsedLimit}
     `;
 
-    // Ensure parameters are parsed as numbers
-    const params = [
-      parseFloat(userLat),
-      parseFloat(userLng),
-      parseFloat(userLat),
-      parseInt(limit, 10),
-    ];
+    const params = [parsedLat, parsedLng, parsedLat];
 
-    const [rows] = await db.execute(sql, params);
+    // Use db.query instead of db.execute for complex math & dynamic limit
+    const [rows] = await db.query(sql, params);
 
     return rows.map((ride) => ({
       id: ride.id,
-      distance_km: Math.round(ride.distance_km * 10) / 10, // Distance rounded to 1 decimal place (e.g. 2.4 km)
+      distance_km: Math.round((ride.distance_km || 0) * 10) / 10,
       source_address: ride.source_address,
       destination_address: ride.destination_address,
       source_lat: ride.source_lat,
