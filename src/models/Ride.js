@@ -388,7 +388,6 @@ class Ride {
 
     const params = [parsedLat, parsedLng, parsedLat];
 
-    // Use db.query instead of db.execute for complex math & dynamic limit
     const [rows] = await db.query(sql, params);
 
     return rows.map((ride) => ({
