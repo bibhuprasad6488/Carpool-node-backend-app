@@ -3,6 +3,7 @@ const Razorpay = require("razorpay");
 const { getIO } = require("../sockets");
 const Booking = require("../models/Booking");
 const Ride = require("../models/Ride");
+const validatePaymentVerification = require("razorpay/dist/utils/razorpay-utils").validatePaymentVerification;
 
 
 const razorpay = new Razorpay({
@@ -290,12 +291,21 @@ exports.paymentSuccess = async (req, res) => {
         }
 
         // Verify Razorpay Signature
-        razorpay.utility.verifyPaymentSignature({
-            razorpay_order_id,
-            razorpay_payment_id,
-            razorpay_signature
-        });
+        // razorpay.utility.verifyPaymentSignature({
+        //     razorpay_order_id,
+        //     razorpay_payment_id,
+        //     razorpay_signature
+        // });
 
+        validatePaymentVerification(
+            {
+                order_id: razorpay_order_id,
+                payment_id: razorpay_payment_id
+            },
+            razorpay_signature,
+            process.env.RAZORPAY_KEY_SECRET
+        );
+        
         // Lock Ride
         const [rides] = await connection.query(
             `SELECT *
