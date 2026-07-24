@@ -149,10 +149,10 @@ exports.register = async (req, res) => {
               ud.city, ud.state, ud.country, ud.postal_code, ud.address,
               ud.bank_account_holder, ud.bank_account_number, ud.bank_account_ifsc, ud.bank_name,
               ud.driver_license, ud.adhhar_card, ud.pan_card, ud.bank_account, ud.profile_picture
-       FROM users u
-       LEFT JOIN user_details ud ON ud.user_id = u.id
-       WHERE u.id = ?`,
-      [userId],
+        FROM users u
+        LEFT JOIN user_details ud ON ud.user_id = u.id
+        WHERE u.id = ?`,
+        [userId],
     );
 
     const registeredUser = userRows[0];

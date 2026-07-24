@@ -1,6 +1,8 @@
 const db = require("../config/db");
 const Razorpay = require("razorpay");
 const { getIO } = require("../sockets");
+const Booking = require("../models/Booking");
+const Ride = require("../models/Ride");
 
 
 const razorpay = new Razorpay({
@@ -262,6 +264,31 @@ exports.paymentSuccess = async (req, res) => {
 
         }
 
+        const [payments] = await connection.query(
+            `SELECT * FROM payments WHERE booking_id = ? FOR UPDATE`,
+            [booking_id]
+        );
+
+        if (payments.length === 0) {
+            await connection.rollback();
+
+            return res.status(404).json({
+                status: "error",
+                message: "Payment record not found."
+            });
+        }
+
+        const payment = payments[0];
+
+        if (payment.order_id !== razorpay_order_id) {
+            await connection.rollback();
+
+            return res.status(400).json({
+                status: "error",
+                message: "Invalid Razorpay order."
+            });
+        }
+
         // Verify Razorpay Signature
         razorpay.utility.verifyPaymentSignature({
             razorpay_order_id,
@@ -319,12 +346,13 @@ exports.paymentSuccess = async (req, res) => {
         await connection.query(
             `UPDATE ride_bookings
             SET
+                payment_id=?,
                 status='confirmed',
                 payment_status='paid',
                 confirmed_at=NOW(),
                 updated_at=NOW()
             WHERE id=?`,
-            [booking.id]
+            [razorpay_payment_id, booking.id]
         );
 
         // Update Payment
@@ -350,9 +378,25 @@ exports.paymentSuccess = async (req, res) => {
 
         io.to(`ride-${ride.id}`).emit("ride-seat-updated", updatedRide[0]);
 
+
+        // 4. Fetch Details
+        const [userRows] = await connection.query(
+            `SELECT u.id, u.name, u.email, u.phone, u.role,
+                ud.city, ud.state, ud.country, ud.postal_code, ud.address,
+                ud.bank_account_holder, ud.bank_account_number, ud.bank_account_ifsc, ud.bank_name,
+                ud.driver_license, ud.adhhar_card, ud.pan_card, ud.bank_account, ud.profile_picture
+        FROM users u
+        LEFT JOIN user_details ud ON ud.user_id = u.id
+        WHERE u.id = ?`,
+            [ride.driver_id],
+        );
+
         return res.json({
             status: "success",
-            message: "Payment successful"
+            message: "Payment successful",
+            bookingDetails: await Booking.getBookingDetails(booking_id),
+            rideDetails: await Ride.rideDetailsById(ride.id),
+            userDetails: userRows[0]
         });
 
     } catch (err) {
