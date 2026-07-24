@@ -64,6 +64,53 @@ class User {
 
     return null;
   }
+
+  static async getUserStats() {
+    try {
+      const [rows] = await db.execute(`
+        SELECT 
+          COUNT(id) AS totalUsers,
+          SUM(CASE WHEN status = 'active' AND is_verified = 1 THEN 1 ELSE 0 END) AS verifiedAccounts,
+          SUM(CASE WHEN is_verified = 0 OR is_verified IS NULL THEN 1 ELSE 0 END) AS pendingApproval,
+          SUM(CASE WHEN status = 'suspended' THEN 1 ELSE 0 END) AS suspendedUsers
+        FROM users
+      `);
+      return (
+        rows[0] || {
+          totalUsers: 0,
+          verifiedAccounts: 0,
+          pendingApproval: 0,
+          suspendedUsers: 0,
+        }
+      );
+    } catch (error) {
+      console.error("Error fetching user stats:", error);
+      // Fallback object to prevent application failure
+      return {
+        totalUsers: 0,
+        verifiedAccounts: 0,
+        pendingApproval: 0,
+        suspendedUsers: 0,
+      };
+    }
+  }
+
+  static async getUserStats() {
+    try {
+      const [rows] = await db.execute(`
+        SELECT 
+          COUNT(id) AS totalUsers,
+          SUM(CASE WHEN status = 'active' AND is_verified = 1 THEN 1 ELSE 0 END) AS verifiedAccounts,
+          SUM(CASE WHEN is_verified = 0 OR is_verified IS NULL THEN 1 ELSE 0 END) AS pendingApproval,
+          SUM(CASE WHEN status = 'suspended' THEN 1 ELSE 0 END) AS suspendedUsers
+        FROM users
+      `);
+      return rows[0] || { totalUsers: 0, verifiedAccounts: 0, pendingApproval: 0, suspendedUsers: 0 };
+    } catch (error) {
+      console.error("Error fetching user stats:", error);
+      return { totalUsers: 0, verifiedAccounts: 0, pendingApproval: 0, suspendedUsers: 0 };
+    }
+  }
 }
 
 module.exports = User;
