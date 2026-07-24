@@ -111,6 +111,51 @@ class User {
       return { totalUsers: 0, verifiedAccounts: 0, pendingApproval: 0, suspendedUsers: 0 };
     }
   }
+
+  static async getAdminUsersList({ search, role, status, limit, offset }) {
+    let query = `
+      SELECT 
+        u.id, 
+        u.name, 
+        u.email, 
+        u.role, 
+        u.status,
+        u.is_verified,
+        u.created_at,
+        COALESCE(ud.rating, 0.0) AS rating,
+        COALESCE(ud.trips_count, 0) AS trips
+      FROM users u
+      LEFT JOIN user_details ud ON u.id = ud.user_id
+      WHERE 1=1
+    `;
+    const params = [];
+
+    if (search) {
+      query += ` AND (u.name LIKE ? OR u.email LIKE ? OR u.id LIKE ?)`;
+      params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+    }
+
+    if (role && role !== "all") {
+      query += ` AND u.role = ?`;
+      params.push(role);
+    }
+
+    if (status && status !== "all") {
+      if (status === "Verified") {
+        query += ` AND u.is_verified = 1 AND u.status = 'active'`;
+      } else if (status === "Pending") {
+        query += ` AND (u.is_verified = 0 OR u.is_verified IS NULL)`;
+      } else if (status === "Suspended") {
+        query += ` AND u.status = 'suspended'`;
+      }
+    }
+
+    query += ` ORDER BY u.created_at DESC LIMIT ? OFFSET ?`;
+    params.push(String(limit), String(offset));
+
+    const [rows] = await db.execute(query, params);
+    return rows || [];
+  }
 }
 
 module.exports = User;
