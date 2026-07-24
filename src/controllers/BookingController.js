@@ -305,7 +305,7 @@ exports.paymentSuccess = async (req, res) => {
                     payment_id: razorpay_payment_id
                 },
                 razorpay_signature,
-                process.env.RAZORPAY_KEY_SECRET
+                process.env.RAZORPAY_SECRET
             );
         } catch (e) {
             await connection.rollback();
