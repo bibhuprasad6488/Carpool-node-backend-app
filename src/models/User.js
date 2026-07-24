@@ -34,7 +34,7 @@ class User {
 
   static async getAdminProfileById(userId) {
     const [rows] = await db.execute(
-      "SELECT id, name, email, role, profile_picture, status, created_at FROM users WHERE id = ? LIMIT 1",
+      "SELECT id, name, email, role, status, created_at FROM users WHERE id = ? LIMIT 1",
       [userId],
     );
     return rows[0] || null;
