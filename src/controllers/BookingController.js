@@ -297,15 +297,24 @@ exports.paymentSuccess = async (req, res) => {
         //     razorpay_signature
         // });
 
-        validatePaymentVerification(
-            {
-                order_id: razorpay_order_id,
-                payment_id: razorpay_payment_id
-            },
-            razorpay_signature,
-            process.env.RAZORPAY_KEY_SECRET
-        );
-        
+        // Verify Razorpay Signature
+        try {
+            validatePaymentVerification(
+                {
+                    order_id: razorpay_order_id,
+                    payment_id: razorpay_payment_id
+                },
+                razorpay_signature,
+                process.env.RAZORPAY_KEY_SECRET
+            );
+        } catch (e) {
+            await connection.rollback();
+
+            return res.status(400).json({
+                status: "error",
+                message: e.message || "Invalid payment signature."
+            });
+        }
         // Lock Ride
         const [rides] = await connection.query(
             `SELECT *
