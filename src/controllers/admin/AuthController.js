@@ -69,9 +69,9 @@ exports.adminLogin = async (req, res) => {
     const adminDetails = await User.getAdminProfileById(user.id);
     let profilePictureUrl = null;
     
-    if (adminDetails && adminDetails.profile_picture) {
-      profilePictureUrl = formatUrl(adminDetails.profile_picture);
-    }
+    // if (adminDetails && adminDetails.profile_picture) {
+    //   profilePictureUrl = formatUrl(adminDetails.profile_picture);
+    // }
 
     // 6. Response Payload
     return res.status(200).json({
@@ -83,7 +83,7 @@ exports.adminLogin = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role, // Returns 1
-        profile_picture: profilePictureUrl || "",
+        // profile_picture: profilePictureUrl || "",
       },
     });
   } catch (error) {
