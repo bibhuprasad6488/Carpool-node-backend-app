@@ -6,10 +6,14 @@ const { getAllUsers } = require('../controllers/admin/UserManagement');
 const { getAllRides } = require('../controllers/admin/RideManagement');
 const { getAllActivityLogs } = require('../controllers/admin/ActivityLogs');
 const { updateVehicleStatus } = require('../controllers/admin/VeichleController');
+const adminAuthController = require("../controllers/admin/AuthController");
 
 router.get('/dashboard', auth, isAdmin, (req, res) => {
     res.json({ message: "Welcome to the admin panel backend!" });
 });
+
+
+router.post("/login", adminAuthController.adminLogin);
 
 router.get('/users', auth, isAdmin, getAllUsers)
 router.get('/rides', auth, isAdmin, getAllRides)
