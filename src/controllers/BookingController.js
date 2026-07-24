@@ -395,7 +395,7 @@ exports.paymentSuccess = async (req, res) => {
             [ride.id]
         );
 
-        io.to(`ride-${ride.id}`).emit("ride-seat-updated", updatedRide[0]);
+        // getIO.to(`ride-${ride.id}`).emit("ride-seat-updated", updatedRide[0]);
 
 
         // 4. Fetch Details

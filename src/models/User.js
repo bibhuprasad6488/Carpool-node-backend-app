@@ -58,7 +58,7 @@ class User {
 
     if (rows.length) {
       const details = rows[0];
-      console.log(details);
+      // console.log(details);
       return details;
     }
 
