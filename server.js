@@ -37,7 +37,7 @@ const adminRoutes = require('./src/routes/admin')
 
 app.use('/', webRoutes);
 app.use('/api', apiRoutes);
-app.use('/admin', adminRoutes)
+app.use('/api/v1/admin', adminRoutes)
 // Create HTTP Server
 const server = http.createServer(app);
 

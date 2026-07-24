@@ -32,6 +32,20 @@ class User {
     return rows[0];
   }
 
+  static async getAdminProfileById(userId) {
+    const [rows] = await db.execute(
+      "SELECT id, name, email, role, profile_picture, status, created_at FROM users WHERE id = ? LIMIT 1",
+      [userId],
+    );
+    return rows[0] || null;
+  }
+
+  static async updateLastLogin(userId) {
+    await db.execute("UPDATE users SET last_login_at = NOW() WHERE id = ?", [
+      userId,
+    ]);
+  }
+
   static async getUserDetailsById(id) {
     const sql = `
         SELECT *
