@@ -83,7 +83,7 @@ exports.adminLogin = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role, // Returns 1
-        profile_picture: profilePictureUrl,
+        profile_picture: profilePictureUrl || "",
       },
     });
   } catch (error) {
