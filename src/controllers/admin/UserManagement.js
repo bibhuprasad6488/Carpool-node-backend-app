@@ -1,11 +1,10 @@
-const User = require("../../models/User");
-
+const UserManagement = require("../../models/admin/User");
 
 // Helper to safely format image URLs without throwing exceptions
 const safeFormatUrl = (url) => {
   if (!url) return null;
   try {
-    return formatUrl ? formatUrl(url) : url;
+    return typeof formatUrl === "function" ? formatUrl(url) : url;
   } catch (err) {
     return url;
   }
@@ -14,18 +13,18 @@ const safeFormatUrl = (url) => {
 // GET /api/v1/admin/users
 exports.getUsers = async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.max(1, parseInt(req.query.limit, 10) || 10);
     const offset = (page - 1) * limit;
 
     const search = req.query.search || "";
     const role = req.query.role || "all";
     const status = req.query.status || "all";
 
-    // Safely execute stats and list queries in parallel
+    // Execute stats and user list queries in parallel
     const [stats, users] = await Promise.all([
-      User.getUserStats(),
-      User.getAdminUsersList({ search, role, status, limit, offset }),
+      UserManagement.getUserStats(),
+      UserManagement.getAdminUsersList({ search, role, status, limit, offset }),
     ]);
 
     const formattedUsers = (users || []).map((u) => {
@@ -36,21 +35,33 @@ exports.getUsers = async (req, res) => {
         verificationStatus = "Verified";
       }
 
-      // Map role integer values with fallbacks
+      // Role mapping (Handles string and integer roles)
       let roleLabel = "Rider";
-      if (Number(u.role) === 1) roleLabel = "Admin";
-      else if (Number(u.role) === 2) roleLabel = "Driver";
-      else if (Number(u.role) === 3) roleLabel = "Rider";
+      const rawRole = String(u.role).toLowerCase();
+
+      if (rawRole === "1" || rawRole === "admin") {
+        roleLabel = "Admin";
+      } else if (rawRole === "2" || rawRole === "driver") {
+        roleLabel = "Driver";
+      } else if (rawRole === "3" || rawRole === "rider") {
+        roleLabel = "Rider";
+      } else if (u.role) {
+        // Capitalize default fallback role string
+        roleLabel = rawRole.charAt(0).toUpperCase() + rawRole.slice(1);
+      }
 
       return {
         id: u.id,
         custom_id: `USR-${u.id}`,
         name: u.name || "N/A",
         email: u.email || "N/A",
+        phone: u.phone || "N/A",
         role: roleLabel,
+        status: u.status || "active",
         verification_status: verificationStatus,
-        trips: Number(u.trips) || 0,
-        rating: Number(u.rating) > 0 ? Number(u.rating).toFixed(1) : "N/A",
+        kyc_status: u.kyc_status || "pending",
+        profile_picture: safeFormatUrl(u.profile_picture),
+        location: u.city && u.state ? `${u.city}, ${u.state}` : u.city || u.state || "N/A",
         created_at: u.created_at || new Date().toISOString(),
       };
     });
@@ -58,8 +69,17 @@ exports.getUsers = async (req, res) => {
     return res.status(200).json({
       status: "success",
       data: {
-        stats: stats || { totalUsers: 0, verifiedAccounts: 0, pendingApproval: 0, suspendedUsers: 0 },
+        stats: stats || {
+          totalUsers: 0,
+          verifiedAccounts: 0,
+          pendingApproval: 0,
+          suspendedUsers: 0,
+        },
         users: formattedUsers,
+        pagination: {
+          page,
+          limit,
+        },
       },
     });
   } catch (error) {
@@ -75,7 +95,7 @@ exports.getUsers = async (req, res) => {
 exports.getUserDetails = async (req, res) => {
   try {
     const { id } = req.params;
-    const user = await User.getFullUserDetails(id);
+    const user = await UserManagement.getFullUserDetails(id);
 
     if (!user) {
       return res.status(404).json({
@@ -86,9 +106,17 @@ exports.getUserDetails = async (req, res) => {
 
     // Role mapping fallback
     let roleLabel = "Rider";
-    if (Number(user.role) === 1) roleLabel = "Admin";
-    else if (Number(user.role) === 2) roleLabel = "Driver";
-    else if (Number(user.role) === 3) roleLabel = "Rider";
+    const rawRole = String(user.role).toLowerCase();
+
+    if (rawRole === "1" || rawRole === "admin") {
+      roleLabel = "Admin";
+    } else if (rawRole === "2" || rawRole === "driver") {
+      roleLabel = "Driver";
+    } else if (rawRole === "3" || rawRole === "rider") {
+      roleLabel = "Rider";
+    } else if (user.role) {
+      roleLabel = rawRole.charAt(0).toUpperCase() + rawRole.slice(1);
+    }
 
     // Status calculation fallback
     let verificationStatus = "Pending";
@@ -111,6 +139,7 @@ exports.getUserDetails = async (req, res) => {
           status: user.status || "active",
           verification_status: verificationStatus,
           created_at: user.created_at || new Date().toISOString(),
+          updated_at: user.updated_at || null,
           profile_picture: safeFormatUrl(user.profile_picture),
           user_details: {
             city: user.city || "N/A",
@@ -119,17 +148,18 @@ exports.getUserDetails = async (req, res) => {
             address: user.address || "N/A",
             postal_code: user.postal_code || "N/A",
             driver_license: safeFormatUrl(user.driver_license),
-            is_dl_verified: user.is_dl_verified ?? "0",
+            is_dl_verified: user.is_dl_verified || "pending",
             adhhar_card: safeFormatUrl(user.adhhar_card),
-            is_adhhar_verified: user.is_adhhar_verified ?? "0",
+            is_adhhar_verified: user.is_adhhar_verified || "pending",
             pan_card: safeFormatUrl(user.pan_card),
-            is_pan_verified: user.is_pan_verified ?? "0",
+            is_pan_verified: user.is_pan_verified || "pending",
             bank_account: safeFormatUrl(user.bank_account),
             bank_account_holder: user.bank_account_holder || "N/A",
             bank_account_number: user.bank_account_number || "N/A",
             bank_name: user.bank_name || "N/A",
             bank_account_ifsc: user.bank_account_ifsc || "N/A",
-            is_account_verified: user.is_account_verified ?? "0",
+            is_account_verified: user.is_account_verified || "pending",
+            details_status: user.details_status || "pending",
           },
         },
       },
