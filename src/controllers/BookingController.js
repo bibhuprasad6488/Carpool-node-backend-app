@@ -11,13 +11,9 @@ const razorpay = new Razorpay({
 
 
 exports.store = async (req, res) => {
-
     const connection = await db.getConnection();
-
     try {
-
         const { ride_id, seats } = req.body;
-
         // Validation
         if (!ride_id) {
             return res.status(422).json({
