@@ -1,9 +1,7 @@
-const db = require("../../config/db"); // Adjust path to your database connection file
+const db = require("../../config/db");
 
 class UserManagement {
-  /**
-   * Fetch aggregate user metrics for the admin panel dashboard
-   */
+
   static async getUserStats() {
     try {
       const [rows] = await db.execute(`
@@ -34,9 +32,6 @@ class UserManagement {
     }
   }
 
-  /**
-   * Fetch paginated & filtered list of users for Admin table view
-   */
   static async getAdminUsersList({ search, role, status, limit = 10, offset = 0 }) {
     try {
       let query = `
@@ -104,9 +99,6 @@ class UserManagement {
     }
   }
 
-  /**
-   * Fetch complete single user profile including extended details and verification documents
-   */
   static async getFullUserDetails(userId) {
     try {
       const [rows] = await db.execute(
