@@ -42,7 +42,7 @@ LEFT JOIN vehicles v
     return rows;
   }
 
-   static async getRideByIdForAdmin (rideId){
+  static async getRideByIdForAdmin(rideId) {
     const sql = `
       SELECT
         -- All Ride Table Details
@@ -95,7 +95,7 @@ LEFT JOIN vehicles v
     `;
 
     const [rows] = await db.query(sql, [rideId]);
-    
+
     if (!rows || rows.length === 0) {
       return null;
     }
@@ -103,15 +103,132 @@ LEFT JOIN vehicles v
     const ride = rows[0];
 
     // Safely parse JSON if route_points is stored as a JSON string in MySQL
-    if (ride.route_points && typeof ride.route_points === 'string') {
+    if (ride.route_points && typeof ride.route_points === "string") {
       try {
         ride.route_points = JSON.parse(ride.route_points);
       } catch (err) {
-        console.error('Failed to parse route_points JSON:', err);
+        console.error("Failed to parse route_points JSON:", err);
       }
     }
 
     return ride;
+  }
+
+  static async createRide(rideData) {
+    const {
+      driver_id,
+      vehicle_id,
+      source_address,
+      source_place_id,
+      destination_address,
+      destination_place_id,
+      source_lat,
+      source_lng,
+      destination_lat,
+      destination_lng,
+      ride_date,
+      departure_time,
+      polyline,
+      route_points,
+      distance_meters,
+      duration_seconds,
+      estimated_reach_time,
+      pet_allowed = "no",
+      smoking_allowed = "no",
+      instant_booking = "no",
+      max_two_in_back = "no",
+      price_per_seat,
+      total_seats,
+      available_seats,
+      status = "scheduled",
+    } = rideData;
+
+    const routePointsJson = route_points
+      ? typeof route_points === "string"
+        ? route_points
+        : JSON.stringify(route_points)
+      : null;
+
+    const sql = `
+      INSERT INTO rides (
+        driver_id, vehicle_id, source_address, source_place_id,
+        destination_address, destination_place_id, source_lat, source_lng,
+        destination_lat, destination_lng, ride_date, departure_time,
+        polyline, route_points, distance_meters, duration_seconds,
+        estimated_reach_time, pet_allowed, smoking_allowed, instant_booking,
+        max_two_in_back, price_per_seat, total_seats, available_seats, status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+
+    const values = [
+      driver_id,
+      vehicle_id,
+      source_address,
+      source_place_id,
+      destination_address,
+      destination_place_id,
+      source_lat,
+      source_lng,
+      destination_lat,
+      destination_lng,
+      ride_date,
+      departure_time,
+      polyline,
+      routePointsJson,
+      distance_meters,
+      duration_seconds,
+      estimated_reach_time,
+      pet_allowed,
+      smoking_allowed,
+      instant_booking,
+      max_two_in_back,
+      price_per_seat,
+      total_seats,
+      available_seats,
+      status,
+    ];
+
+    const [result] = await db.query(sql, values);
+    return result.insertId;
+  }
+
+  static async updateRide(rideId, updateFields) {
+    if (!updateFields || Object.keys(updateFields).length === 0) {
+      throw new Error("No fields provided for update");
+    }
+    if (
+      updateFields.route_points &&
+      typeof updateFields.route_points !== "string"
+    ) {
+      updateFields.route_points = JSON.stringify(updateFields.route_points);
+    }
+
+    const setClauses = [];
+    const values = [];
+
+    Object.keys(updateFields).forEach((key) => {
+      setClauses.push(`${key} = ?`);
+      values.push(updateFields[key]);
+    });
+
+    setClauses.push("updated_at = NOW()");
+
+    values.push(rideId);
+
+    const sql = `
+      UPDATE rides 
+      SET ${setClauses.join(", ")} 
+      WHERE id = ?
+    `;
+
+    const [result] = await db.query(sql, values);
+    return result.affectedRows > 0;
+  }
+
+  static async deleteRide(rideId) {
+    const sql = `DELETE FROM rides WHERE id = ?`;
+    const [result] = await db.query(sql, [rideId]);
+    return result.affectedRows > 0;
   }
 }
 
