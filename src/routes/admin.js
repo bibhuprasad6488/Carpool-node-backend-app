@@ -5,7 +5,7 @@ const auth = require('../middleware/auth');
 const { getAllRides, getRideDetails, deleteRide, updateRide, createRide } = require('../controllers/admin/RideManagement');
 const adminUserController = require("../controllers/admin/UserManagement");
 const { getAllActivityLogs } = require('../controllers/admin/ActivityLogs');
-const { updateVehicleStatus } = require('../controllers/admin/VeichleController');
+const { updateVehicleStatus, getAllVehicles, getVehicleById } = require('../controllers/admin/VeichleController');
 const adminAuthController = require("../controllers/admin/AuthController");
 
 router.get('/dashboard', auth, isAdmin, (req, res) => {
@@ -15,8 +15,9 @@ router.get('/dashboard', auth, isAdmin, (req, res) => {
 
 router.post("/login", adminAuthController.adminLogin);
 
-router.get('/users', auth, isAdmin, adminUserController.getUsers )
+router.get('/users', auth, isAdmin, adminUserController.getUsers );
 router.get("/users/:id", auth, isAdmin, adminUserController.getUserDetails);
+router.patch('/users/:id', auth, isAdmin, adminUserController.updateUserStatus);
 
 router.get('/rides', auth, isAdmin, getAllRides)
 router.get("/rides/:id", auth, isAdmin, getRideDetails);
@@ -24,8 +25,10 @@ router.post('/rides', auth, isAdmin, createRide);
 router.put('/rides/:id', auth, isAdmin, updateRide);
 router.delete('/rides/:id', auth, isAdmin, deleteRide );
 
-router.get('/activity-logs', auth, isAdmin, getAllActivityLogs)
+router.get('/vehicles', auth, isAdmin, getAllVehicles);
+router.get('/vehicles/:id', auth, isAdmin, getVehicleById);
+router.patch('/vehicles/:id', auth, isAdmin, updateVehicleStatus)
 
-router.patch('/vehicles/:id/status', auth, isAdmin, updateVehicleStatus)
+router.get('/activity-logs', auth, isAdmin, getAllActivityLogs)
 
 module.exports = router; 

@@ -1,6 +1,5 @@
 const UserManagement = require("../../models/admin/User.admin");
 
-// Helper to safely format image URLs without throwing exceptions
 const safeFormatUrl = (url) => {
   if (!url) return null;
   try {
@@ -10,7 +9,6 @@ const safeFormatUrl = (url) => {
   }
 };
 
-// GET /api/v1/admin/users
 exports.getUsers = async (req, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
@@ -61,7 +59,10 @@ exports.getUsers = async (req, res) => {
         verification_status: verificationStatus,
         kyc_status: u.kyc_status || "pending",
         profile_picture: safeFormatUrl(u.profile_picture),
-        location: u.city && u.state ? `${u.city}, ${u.state}` : u.city || u.state || "N/A",
+        location:
+          u.city && u.state
+            ? `${u.city}, ${u.state}`
+            : u.city || u.state || "N/A",
         created_at: u.created_at || new Date().toISOString(),
       };
     });
@@ -91,7 +92,6 @@ exports.getUsers = async (req, res) => {
   }
 };
 
-// GET /api/v1/admin/users/:id
 exports.getUserDetails = async (req, res) => {
   try {
     const { id } = req.params;
@@ -169,6 +169,46 @@ exports.getUserDetails = async (req, res) => {
     return res.status(500).json({
       status: "error",
       message: "An internal error occurred while fetching user details.",
+    });
+  }
+};
+
+exports.updateUserStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!["active", "inactive"].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Invalid status value. Allowed values are 'active' or 'inactive'.",
+      });
+    }
+
+    // Check if user exists
+    const user = await UserManagement.findById(id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found.",
+      });
+    }
+
+    // Update status
+    await UserManagement.updateUserStatus(id, status);
+
+    return res.status(200).json({
+      success: true,
+      message: `User status successfully updated to ${status}.`,
+      data: { userId: id, status },
+    });
+    
+  } catch (error) {
+    console.error("Error updating user status:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error while updating user status.",
     });
   }
 };
