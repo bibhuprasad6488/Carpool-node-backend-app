@@ -1,4 +1,4 @@
-const db = require("../../config/db"); // Adjust path to your database connection file
+const db = require("../../config/db");
 
 class UserManagement {
 

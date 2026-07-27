@@ -1,4 +1,4 @@
-const UserManagement = require("../../models/admin/User");
+const UserManagement = require("../../models/admin/User.admin");
 
 // Helper to safely format image URLs without throwing exceptions
 const safeFormatUrl = (url) => {
