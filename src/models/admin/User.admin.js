@@ -169,6 +169,94 @@ class UserManagement {
     const [rows] = await db.execute(query, [userId]);
     return rows[0] || null;
   }
+
+  static async getAllDrivers({
+    page = 1,
+    limit = 10,
+    search = "",
+    status = "",
+  }) {
+    const offset = (page - 1) * limit;
+    const searchParam = `%${search}%`;
+
+    let whereClause = `WHERE u.role = 2 AND (u.name LIKE ? OR u.email LIKE ? OR u.phone LIKE ?)`;
+    const queryParams = [searchParam, searchParam, searchParam];
+
+    if (status) {
+      whereClause += ` AND u.status = ?`;
+      queryParams.push(status);
+    }
+
+    // Count Total Drivers
+    const countQuery = `
+      SELECT COUNT(*) as total 
+      FROM users u
+      ${whereClause}
+    `;
+
+    // Fetch Drivers with stats
+    const dataQuery = `
+      SELECT 
+        u.id,
+        u.name,
+        u.email,
+        u.phone,
+        u.status,
+        u.created_at,
+        u.updated_at,
+        COUNT(DISTINCT v.id) AS total_vehicles,
+        COUNT(DISTINCT r.id) AS total_rides
+      FROM users u
+      LEFT JOIN vehicles v ON v.user_id = u.id
+      LEFT JOIN rides r ON r.driver_id = u.id
+      ${whereClause}
+      GROUP BY u.id
+      ORDER BY u.created_at DESC
+      LIMIT ? OFFSET ?
+    `;
+
+    const [[{ total }]] = await db.execute(countQuery, queryParams);
+
+    // Add limit & offset as strings/numbers to query params
+    const [drivers] = await db.execute(dataQuery, [
+      ...queryParams,
+      String(limit),
+      String(offset),
+    ]);
+
+    return { total, drivers };
+  }
+
+  static async getDriverById(driverId) {
+    const driverQuery = `
+      SELECT 
+        u.id,
+        u.name,
+        u.email,
+        u.phone,
+        u.status,
+        u.created_at,
+        u.updated_at
+      FROM users u
+      WHERE u.id = ? AND u.role = 2
+    `;
+
+    const vehiclesQuery = `
+      SELECT id, model, registration_number, fuel_type, color, status 
+      FROM vehicles 
+      WHERE user_id = ?
+    `;
+
+    const [driverRows] = await db.execute(driverQuery, [driverId]);
+    if (!driverRows[0]) return null;
+
+    const [vehicles] = await db.execute(vehiclesQuery, [driverId]);
+
+    return {
+      ...driverRows[0],
+      vehicles,
+    };
+  }
 }
 
 module.exports = UserManagement;
