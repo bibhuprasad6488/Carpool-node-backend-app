@@ -89,7 +89,7 @@ exports.store = async (req, res) => {
 
         // Duplicate booking check (optional)
 
-        /*
+        
         const [bookingExists] = await connection.query(
             `SELECT id
             FROM ride_bookings
@@ -106,11 +106,10 @@ exports.store = async (req, res) => {
 
             return res.status(400).json({
                 status: "error",
-                message: "Booking already exists."
+                message: "You have a Booking already exists for the ride."
             });
-
         }
-        */
+        
 
         const bookingCode = "BK" + Date.now();
         const totalPrice = Number(ride.price_per_seat) * Number(seats);

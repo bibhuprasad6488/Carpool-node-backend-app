@@ -10,11 +10,16 @@ exports.index = async (req, res) => {
     const { travel_date } = req.query;
     const userId = req.user.id;
     const rides = await Ride.getAllRides(travel_date, userId);
-    // console.log(rides);
-    
+    // console.log(rides.length);
+
     return res.status(200).json({
       status: "success",
-      data: rides,
+      data: {
+        rides: rides,
+        total_rides: rides.length > 0 ? rides.length : 0,
+        total_seat_booked: await Ride.getTotalSeatsByDriver(userId),
+        total_earning: await Ride.getTotalEarningsByDriver(userId),
+      },
     });
   } catch (error) {
     console.error(error);
