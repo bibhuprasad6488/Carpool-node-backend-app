@@ -1,7 +1,48 @@
 const Vehicle = require("../../models/Vehicle");
 const ActivityLog = require("../../models/admin/ActivityLog");
+const VehicleAdminModel = require("../../models/admin/Vehichle.admin");
 
 const ALLOWED_STATUSES = ["active", "inactive", "pending", "blocked"];
+
+exports.getAllVehicles = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const search = req.query.search || '';
+
+    const { total, vehicles } = await VehicleAdminModel.getAllVehicles({ page, limit, search });
+
+    return res.status(200).json({
+      success: true,
+      data: vehicles,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    console.error("Error fetching vehicles:", error);
+    return res.status(500).json({ success: false, message: "Internal server error." });
+  }
+};
+
+exports.getVehicleById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const vehicle = await VehicleAdminModel.getVehicleById(id);
+
+    if (!vehicle) {
+      return res.status(404).json({ success: false, message: "Vehicle not found." });
+    }
+
+    return res.status(200).json({ success: true, data: vehicle });
+  } catch (error) {
+    console.error("Error fetching vehicle details:", error);
+    return res.status(500).json({ success: false, message: "Internal server error." });
+  }
+};
 
 exports.updateVehicleStatus = async (req, res) => {
   const { id } = req.params;
@@ -14,7 +55,7 @@ exports.updateVehicleStatus = async (req, res) => {
     });
   }
 
-  const vehicle = await Vehicle.getByVehicleId(id);
+  const vehicle = await VehicleAdminModel.getVehicleById(id);
 
   if (!vehicle) {
     return res.status(404).json({
@@ -23,7 +64,7 @@ exports.updateVehicleStatus = async (req, res) => {
     });
   }
 
-  await Vehicle.updateStatus(id, status);
+  await VehicleAdminModel.updateStatus(id, status);
 
   await ActivityLog.create({
     user_id: req.user.id,

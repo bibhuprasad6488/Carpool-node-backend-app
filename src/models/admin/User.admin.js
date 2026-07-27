@@ -1,7 +1,6 @@
 const db = require("../../config/db");
 
 class UserManagement {
-
   static async getUserStats() {
     try {
       const [rows] = await db.execute(`
@@ -32,7 +31,13 @@ class UserManagement {
     }
   }
 
-  static async getAdminUsersList({ search, role, status, limit = 10, offset = 0 }) {
+  static async getAdminUsersList({
+    search,
+    role,
+    status,
+    limit = 10,
+    offset = 0,
+  }) {
     try {
       let query = `
         SELECT 
@@ -139,7 +144,7 @@ class UserManagement {
         WHERE u.id = ?
         LIMIT 1
       `,
-        [userId]
+        [userId],
       );
 
       return rows[0] || null;
@@ -147,6 +152,22 @@ class UserManagement {
       console.error(`Error fetching user details for ID ${userId}:`, error);
       throw error;
     }
+  }
+
+  static async updateUserStatus(userId, status) {
+    const query = `
+      UPDATE users 
+      SET status = ?, updated_at = NOW() 
+      WHERE id = ?
+    `;
+    const [result] = await db.execute(query, [status, userId]);
+    return result;
+  }
+
+  static async findById(userId) {
+    const query = `SELECT id, name, email, status FROM users WHERE id = ?`;
+    const [rows] = await db.execute(query, [userId]);
+    return rows[0] || null;
   }
 }
 

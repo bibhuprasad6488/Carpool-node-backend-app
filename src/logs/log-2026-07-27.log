@@ -1,0 +1,4 @@
+[2026-07-27 17:19:33] ERROR: Error: Data truncated for column 'status' at row 1
+    at VehicleAdminModel.updateStatus (E:\DEV\Carpool-node-backend-app\src\models\admin\Vehichle.admin.js:70:31)
+    at exports.updateVehicleStatus (E:\DEV\Carpool-node-backend-app\src\controllers\admin\VeichleController.js:67:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
