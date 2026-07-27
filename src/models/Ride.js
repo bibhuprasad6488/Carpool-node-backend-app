@@ -10,7 +10,7 @@ const formatProfileUrl = (filePath) => {
 };
 
 class Ride {
-  static async getAllRides(travelDate = null) {
+  static async getAllRides(travelDate = null, userId = null) {
     let sql = `
             SELECT
                 r.*,
@@ -38,8 +38,13 @@ class Ride {
 
     if (travelDate) {
       sql += ` WHERE r.ride_date = ?`;
-      params.push(travelDate);
     }
+
+    if (userId) {
+      sql += ` WHERE r.driver_id = ?`;
+      params.push(userId);
+    }
+
     sql += ` ORDER BY r.id DESC`;
     const [rows] = await db.execute(sql, params);
     return rows;

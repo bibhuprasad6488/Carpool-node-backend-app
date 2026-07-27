@@ -8,7 +8,10 @@ const ActivityLog = require("../models/admin/ActivityLog");
 exports.index = async (req, res) => {
   try {
     const { travel_date } = req.query;
-    const rides = await Ride.getAllRides(travel_date);
+    const userId = req.user.id;
+    const rides = await Ride.getAllRides(travel_date, userId);
+    // console.log(rides);
+    
     return res.status(200).json({
       status: "success",
       data: rides,
@@ -260,7 +263,7 @@ exports.getUpcomingRides = async (req, res) => {
     let { lat, lng } = req.query;
 
     if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
-      lat = process.env.DEFAULT_LAT || 20.2961; 
+      lat = process.env.DEFAULT_LAT || 20.2961;
       lng = process.env.DEFAULT_LNG || 85.8245;
     }
 
