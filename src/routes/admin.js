@@ -8,6 +8,7 @@ const { getAllActivityLogs } = require('../controllers/admin/ActivityLogs');
 const { updateVehicleStatus, getAllVehicles, getVehicleById } = require('../controllers/admin/VeichleController');
 const adminAuthController = require("../controllers/admin/AuthController");
 const { getAllDrivers, getDriverById } = require('../controllers/admin/DriverManagement');
+const { getConversations, getConversationMessages, createConversation } = require('../controllers/admin/ChatManagement');
 
 router.get('/dashboard', auth, isAdmin, (req, res) => {
     res.json({ message: "Welcome to the admin panel backend!" });
@@ -31,7 +32,11 @@ router.get('/drivers/:id', auth, isAdmin, getDriverById);
 
 router.get('/vehicles', auth, isAdmin, getAllVehicles);
 router.get('/vehicles/:id', auth, isAdmin, getVehicleById);
-router.patch('/vehicles/:id', auth, isAdmin, updateVehicleStatus)
+router.patch('/vehicles/:id', auth, isAdmin, updateVehicleStatus);
+
+router.get('/conversations', getConversations)
+router.post('/conversations', createConversation)
+router.get('/:id/messages', getConversationMessages);
 
 router.get('/activity-logs', auth, isAdmin, getAllActivityLogs)
 
