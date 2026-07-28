@@ -165,7 +165,7 @@ class UserManagement {
   }
 
   static async findById(userId) {
-    const query = `SELECT id, name, email, status FROM users WHERE id = ?`;
+    const query = `SELECT id, name, email, status, role FROM users WHERE id = ?`;
     const [rows] = await db.execute(query, [userId]);
     return rows[0] || null;
   }

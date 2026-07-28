@@ -534,4 +534,3 @@ exports.paymentFailed = async (req, res) => {
     }
 
 };
-
