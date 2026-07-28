@@ -401,7 +401,9 @@ exports.paymentSuccess = async (req, res) => {
 
         io.to(`ride-${ride.id}`).emit("ride-seat-updated", updatedRide[0]);
 
-
+        console.log("ride-seat-updated emitted");
+        console.log("================================");
+        
         // 4. Fetch Details
         const [userRows] = await connection.query(
             `SELECT u.id, u.name, u.email, u.phone, u.role,
