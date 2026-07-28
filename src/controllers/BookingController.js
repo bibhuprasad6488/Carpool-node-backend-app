@@ -1,6 +1,6 @@
 const db = require("../config/db");
 const Razorpay = require("razorpay");
-const { getIO } = require("../sockets");
+const { getIO } = require("../../socket");
 const Booking = require("../models/Booking");
 const Ride = require("../models/Ride");
 const validatePaymentVerification = require("razorpay/dist/utils/razorpay-utils").validatePaymentVerification;
@@ -89,7 +89,7 @@ exports.store = async (req, res) => {
 
         // Duplicate booking check (optional)
 
-        
+
         const [bookingExists] = await connection.query(
             `SELECT id
             FROM ride_bookings
@@ -109,7 +109,7 @@ exports.store = async (req, res) => {
                 message: "You have a Booking already exists for the ride."
             });
         }
-        
+
 
         const bookingCode = "BK" + Date.now();
         const totalPrice = Number(ride.price_per_seat) * Number(seats);
@@ -390,7 +390,10 @@ exports.paymentSuccess = async (req, res) => {
             [ride.id]
         );
 
-        // getIO.to(`ride-${ride.id}`).emit("ride-seat-updated", updatedRide[0]);
+        // Socket.IO Broadcast
+        const io = getIO();
+
+        io.to(`ride-${ride.id}`).emit("ride-seat-updated", updatedRide[0]);
 
 
         // 4. Fetch Details
