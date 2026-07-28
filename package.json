@@ -28,6 +28,7 @@
     "razorpay": "^2.9.6",
     "redis": "^6.1.0",
     "socket.io": "^4.8.3",
+    "socket.io-client": "^4.8.3",
     "winston": "^3.19.0",
     "winston-daily-rotate-file": "^5.0.0"
   },
