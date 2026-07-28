@@ -39,6 +39,11 @@
             "date": 1785128337488,
             "name": "E:\\DEV\\Carpool-node-backend-app\\src\\logs\\log-2026-07-27.log",
             "hash": "412de716367bc7a783ee8630a336816d38632988cbd43931170d49bde139ad6d"
+        },
+        {
+            "date": 1785218855288,
+            "name": "E:\\DEV\\Carpool-node-backend-app\\src\\logs\\log-2026-07-28.log",
+            "hash": "614b91bd0baa05f749d2615f07e79f5a47a4ef0513baf5a5c2a4dbba2deb5f0f"
         }
     ],
     "hashType": "sha256"

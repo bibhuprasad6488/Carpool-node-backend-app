@@ -82,64 +82,42 @@ exports.messages = async (req, res) => {
 };
 
 exports.send = async (req, res) => {
-    try {
-
-        const errors = validationResult(req);
-
-        if (!errors.isEmpty()) {
-            return res.status(422).json({
-                status: "error",
-                errors: errors.array()
-            });
-        }
-
-        const { conversation_id, message } = req.body;
-
-        const conversation = await Conversation.findById(conversation_id);
-
-        if (!conversation) {
-            return res.status(404).json({
-                status: "error",
-                message: "Conversation not found"
-            });
-        }
-
-        if (
-            req.user.id !== conversation.driver_id &&
-            req.user.id !== conversation.passenger_id
-        ) {
-            return res.status(403).json({
-                status: "error",
-                message: "Unauthorized"
-            });
-        }
-
-        const newMessage = await Message.create({
-            conversation_id,
-            sender_id: req.user.id,
-            message
-        });
-
-        // Socket.IO Broadcast
-        const io = getIO();
-
-        io.to(`conversation_${conversation_id}`).emit(
-            "message_received",
-            newMessage
-        );
-
-        return res.json({
-            status: "success",
-            data: newMessage
-        });
-
-    } catch (err) {
-
-        console.error(err);
-
-        return res.status(500).json({
-            status: "error",
-            message: err.message
-        });
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(422).json({ status: "error", errors: errors.array() });
     }
+
+    const { conversation_id, message } = req.body;
+    const conversation = await Conversation.findById(conversation_id);
+
+    if (!conversation) {
+      return res.status(404).json({ status: "error", message: "Conversation not found" });
+    }
+
+    if (
+      req.user.id !== conversation.driver_id &&
+      req.user.id !== conversation.passenger_id
+    ) {
+      return res.status(403).json({ status: "error", message: "Unauthorized" });
+    }
+
+    const newMessage = await Message.create({
+      conversation_id,
+      sender_id: req.user.id,
+      message
+    });
+
+    // Broadcast to authorized room only
+    const io = getIO();
+    io.to(`conversation_${conversation_id}`).emit("message_received", newMessage);
+
+    return res.json({
+      status: "success",
+      data: newMessage
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ status: "error", message: err.message });
+  }
 };
