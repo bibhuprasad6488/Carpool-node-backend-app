@@ -10,6 +10,7 @@ const UserController = require('../controllers/UserController');
 const VehicleController = require('../controllers/VehicleController');
 const BookingController = require('../controllers/BookingController');
 const RideController = require('../controllers/RideController');
+const ChatController = require('../controllers/ChatController');
 
 
 router.get('/v1/get-roles', UserController.getRoles)
@@ -54,14 +55,14 @@ router.get("/v1/vehicles-list", auth, VehicleController.allVehicleLists);
 
 router.post("/v1/store-vehicle-data",
     auth,
-    uploadCloudinary.fields([ 
+    uploadCloudinary.fields([
         { name: "rc_file", maxCount: 1 },
         { name: "insurance_file", maxCount: 1 },
         { name: "front_image", maxCount: 1 },
         { name: "back_image", maxCount: 1 },
         { name: "side_image", maxCount: 1 },
         { name: "number_plate_image", maxCount: 1 }
-    ]), 
+    ]),
     VehicleController.store
 );
 
@@ -112,5 +113,13 @@ router.post("/v1/payment-failed", auth, BookingController.paymentFailed);
 
 // router.post("/v1/bookings/:id/cancel", auth, BookingController.cancelUserBooking);
 
+
+// Messages
+
+router.get("/conversation/:bookingId", auth, ChatController.conversation);
+
+router.get("/messages/:conversationId", auth, ChatController.messages);
+
+router.post("/send", auth, ChatController.send);
 
 module.exports = router;
