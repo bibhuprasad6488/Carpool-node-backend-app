@@ -14,22 +14,22 @@ module.exports = {
       }
     });
 
-    // 1. JWT Authentication Middleware for WebSockets
-    io.use((socket, next) => {
-      const token = socket.handshake.auth?.token || socket.handshake.headers?.authorization?.split(' ')[1];
+    // // 1. JWT Authentication Middleware for WebSockets
+    // io.use((socket, next) => {
+    //   const token = socket.handshake.auth?.token || socket.handshake.headers?.authorization?.split(' ')[1];
 
-      if (!token) {
-        return next(new Error("Authentication error: Token missing"));
-      }
+    //   if (!token) {
+    //     return next(new Error("Authentication error: Token missing"));
+    //   }
 
-      jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-        if (err) {
-          return next(new Error("Authentication error: Invalid or expired token"));
-        }
-        socket.user = decoded;
-        next();
-      });
-    });
+    //   jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+    //     if (err) {
+    //       return next(new Error("Authentication error: Invalid or expired token"));
+    //     }
+    //     socket.user = decoded;
+    //     next();
+    //   });
+    // });
 
     // 2. Connection and Room Management
     io.on("connection", (socket) => {
