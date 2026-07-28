@@ -1,3 +1,0 @@
-[2026-07-28 12:50:14] ERROR: ReferenceError: res is not defined
-    at exports.getConversations (E:\DEV\Carpool-node-backend-app\src\controllers\admin\ChatManagement.js:6:5)
-    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
