@@ -58,6 +58,19 @@ module.exports = {
         console.log(`Socket ${socket.id} left room: ${roomName}`);
       });
 
+      socket.on("join_ride", (rideId) => {
+        socket.join(`ride-${rideId}`);
+
+        console.log(
+          `Socket ${socket.id} joined ride room: ride-${rideId}`
+        );
+
+        socket.emit("ride_joined", {
+          room: `ride-${rideId}`,
+          success: true,
+        });
+      });
+      
       socket.on("disconnect", () => {
         console.log(`Socket disconnected: ID ${socket.id}`);
       });
