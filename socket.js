@@ -1,6 +1,5 @@
 // socket.js
 const { Server } = require("socket.io");
-const jwt = require("jsonwebtoken");
 const Conversation = require("./src/models/Conversation");
 
 let io;
@@ -14,46 +13,38 @@ module.exports = {
       }
     });
 
-    // // 1. JWT Authentication Middleware for WebSockets
-    // io.use((socket, next) => {
-    //   const token = socket.handshake.auth?.token || socket.handshake.headers?.authorization?.split(' ')[1];
-
-    //   if (!token) {
-    //     return next(new Error("Authentication error: Token missing"));
-    //   }
-
-    //   jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-    //     if (err) {
-    //       return next(new Error("Authentication error: Invalid or expired token"));
-    //     }
-    //     socket.user = decoded;
-    //     next();
-    //   });
-    // });
-
-    // 2. Connection and Room Management
+    // Public connection handler (No JWT check on connection)
     io.on("connection", (socket) => {
-      console.log(` authenticated user connected: User ID ${socket.user.id} | Socket ID ${socket.id}`);
+      console.log(`Socket connected: ID ${socket.id}`);
 
-      socket.on("join_conversation", async (conversationId) => {
+      // Client passes both conversationId AND userId when joining
+      socket.on("join_conversation", async ({ conversationId, userId }) => {
         try {
+          if (!conversationId || !userId) {
+            return socket.emit("error", { message: "conversationId and userId are required" });
+          }
+
           const conversation = await Conversation.findById(conversationId);
 
           if (!conversation) {
             return socket.emit("error", { message: "Conversation not found" });
           }
 
-          // Authorization Check
-          if (
-            socket.user.id !== conversation.driver_id &&
-            socket.user.id !== conversation.passenger_id
-          ) {
+          // Convert IDs to numbers to ensure safe comparison
+          const numericUserId = Number(userId);
+          const driverId = Number(conversation.driver_id);
+          const passengerId = Number(conversation.passenger_id);
+
+          // Verify if the claiming user is part of this conversation
+          if (numericUserId !== driverId && numericUserId !== passengerId) {
             return socket.emit("error", { message: "Unauthorized room access" });
           }
 
           const roomName = `conversation_${conversationId}`;
           socket.join(roomName);
-          console.log(`User ${socket.user.id} joined room: ${roomName}`);
+          console.log(`User ${userId} (Socket ${socket.id}) joined room: ${roomName}`);
+
+          socket.emit("joined_room", { room: roomName, success: true });
         } catch (error) {
           console.error("Room Join Error:", error);
           socket.emit("error", { message: "Failed to join chat room" });
@@ -64,11 +55,11 @@ module.exports = {
       socket.on("leave_conversation", (conversationId) => {
         const roomName = `conversation_${conversationId}`;
         socket.leave(roomName);
-        console.log(`User ${socket.user.id} left room: ${roomName}`);
+        console.log(`Socket ${socket.id} left room: ${roomName}`);
       });
 
       socket.on("disconnect", () => {
-        console.log(`User disconnected: ID ${socket.user.id}`);
+        console.log(`Socket disconnected: ID ${socket.id}`);
       });
     });
 
