@@ -390,6 +390,12 @@ exports.paymentSuccess = async (req, res) => {
             [ride.id]
         );
 
+        console.log("========== SOCKET TEST ==========");
+        console.log("Ride ID:", ride.id);
+        console.log("Room:", `ride-${ride.id}`);
+        console.log("Updated Ride:", updatedRide[0]);
+
+
         // Socket.IO Broadcast
         const io = getIO();
 
