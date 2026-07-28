@@ -42,12 +42,8 @@ exports.store = async (req, res) => {
             [ride_id]
         );
 
-        const ride = rides[0];
 
-        // Check seats
-        // Create booking
-
-        await connection.commit();
+        // Check ride count
 
         if (rides.length === 0) {
 
@@ -60,6 +56,20 @@ exports.store = async (req, res) => {
 
         }
 
+        const ride = rides[0];
+
+        const rideDateTime = new Date(
+            `${ride.ride_date} ${ride.departure_time}`
+        );
+
+        if (rideDateTime < new Date()) {
+
+            await connection.rollback();
+            return res.status(400).json({
+                status: "error",
+                message: "Ride has already departed."
+            });
+        }
 
         // Prevent self booking
 
@@ -444,7 +454,6 @@ exports.paymentFailed = async (req, res) => {
     const connection = await db.getConnection();
 
     try {
-
         const { booking_id } = req.body;
 
         if (!booking_id) {
@@ -456,48 +465,94 @@ exports.paymentFailed = async (req, res) => {
 
         await connection.beginTransaction();
 
-        // Lock booking
+        // Lock Booking
         const [bookings] = await connection.query(
             `SELECT *
-             FROM ride_bookings
-             WHERE id=?
-             FOR UPDATE`,
+            FROM ride_bookings
+            WHERE id = ?
+            FOR UPDATE`,
             [booking_id]
         );
 
         if (bookings.length === 0) {
-
             await connection.rollback();
 
             return res.status(404).json({
                 status: "error",
                 message: "Booking not found."
             });
-
         }
 
         const booking = bookings[0];
 
-        // Prevent changing already paid booking
+        // Already Paid
         if (booking.payment_status === "paid") {
-
             await connection.rollback();
 
             return res.status(400).json({
                 status: "error",
                 message: "Payment already completed."
             });
+        }
 
+        // Already Cancelled
+        if (booking.status === "cancelled") {
+            await connection.rollback();
+
+            return res.status(400).json({
+                status: "error",
+                message: "Booking already cancelled."
+            });
+        }
+
+        // Lock Payment
+        const [payments] = await connection.query(
+            `SELECT *
+            FROM payments
+            WHERE booking_id = ?
+            FOR UPDATE`,
+            [booking.id]
+        );
+
+        if (payments.length === 0) {
+            await connection.rollback();
+
+            return res.status(404).json({
+                status: "error",
+                message: "Payment record not found."
+            });
+        }
+
+        // Lock Ride
+        const [rides] = await connection.query(
+            `SELECT *
+        FROM rides
+        WHERE id = ?
+        FOR UPDATE`,
+            [booking.ride_id]
+        );
+
+        if (rides.length > 0) {
+            await connection.query(
+                `UPDATE rides
+            SET available_seats = available_seats + ?,
+                updated_at = NOW()
+            WHERE id = ?`,
+                [
+                    booking.seats,
+                    booking.ride_id
+                ]
+            );
         }
 
         // Update Booking
         await connection.query(
             `UPDATE ride_bookings
-             SET
-                status='cancelled',
-                payment_status='failed',
-                updated_at=NOW()
-             WHERE id=?`,
+            SET
+            status='cancelled',
+            payment_status='failed',
+            updated_at=NOW()
+            WHERE id=?`,
             [booking.id]
         );
 
@@ -522,6 +577,8 @@ exports.paymentFailed = async (req, res) => {
 
         await connection.rollback();
 
+        console.error(err);
+
         return res.status(500).json({
             status: "error",
             message: err.message
@@ -532,5 +589,4 @@ exports.paymentFailed = async (req, res) => {
         connection.release();
 
     }
-
 };
