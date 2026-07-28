@@ -3,6 +3,7 @@
 /src/public/uploads
 # /storage/*.key
 # /vendor
+./src/logs
 .env
 .env.backup
 .phpunit.result.cache
@@ -14,3 +15,5 @@ yarn-error.log
 /.idea
 /.vscode
 test-socket.js
+
+src/logs

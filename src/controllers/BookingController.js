@@ -3,121 +3,346 @@ const Razorpay = require("razorpay");
 const { getIO } = require("../../socket");
 const Booking = require("../models/Booking");
 const Ride = require("../models/Ride");
-const validatePaymentVerification = require("razorpay/dist/utils/razorpay-utils").validatePaymentVerification;
-
+const validatePaymentVerification =
+  require("razorpay/dist/utils/razorpay-utils").validatePaymentVerification;
 
 const razorpay = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY,
-    key_secret: process.env.RAZORPAY_SECRET
+  key_id: process.env.RAZORPAY_KEY,
+  key_secret: process.env.RAZORPAY_SECRET,
 });
 
+// exports.store = async (req, res) => {
+//     const connection = await db.getConnection();
+//     try {
+//         const { ride_id, seats } = req.body;
+//         // Validation
+//         if (!ride_id) {
+//             return res.status(422).json({
+//                 status: "error",
+//                 message: "Ride is required."
+//             });
+//         }
 
+//         if (!seats || seats <= 0) {
+//             return res.status(422).json({
+//                 status: "error",
+//                 message: "Seats are required."
+//             });
+//         }
+
+//         await connection.beginTransaction();
+
+//         const [rides] = await connection.query(
+//             `SELECT *
+//             FROM rides
+//             WHERE id=?
+//             FOR UPDATE`,
+//             [ride_id]
+//         );
+
+//         const ride = rides[0];
+
+//         // Check seats
+//         // Create booking
+
+//         await connection.commit();
+
+//         if (rides.length === 0) {
+
+//             await connection.rollback();
+
+//             return res.status(404).json({
+//                 status: "error",
+//                 message: "Ride not found."
+//             });
+
+//         }
+
+//         // Prevent self booking
+
+//         if (ride.driver_id == req.user.id) {
+
+//             await connection.rollback();
+
+//             return res.status(400).json({
+//                 status: "error",
+//                 message: "Driver cannot book own ride"
+//             });
+
+//         }
+
+//         // Seat check
+
+//         if (ride.available_seats < seats) {
+
+//             await connection.rollback();
+
+//             return res.status(400).json({
+//                 status: "error",
+//                 message: "Seats not available"
+//             });
+
+//         }
+
+//         // Duplicate booking check (optional)
+
+//         const [bookingExists] = await connection.query(
+//             `SELECT id
+//             FROM ride_bookings
+//             WHERE ride_id=?
+//             AND passenger_id=?
+//             AND status IN ('pending','confirmed')
+//             LIMIT 1`,
+//             [ride.id, req.user.id]
+//         );
+
+//         if (bookingExists.length > 0) {
+
+//             await connection.rollback();
+
+//             return res.status(400).json({
+//                 status: "error",
+//                 message: "You have a Booking already exists for the ride."
+//             });
+//         }
+
+//         const bookingCode = "BK" + Date.now();
+//         const totalPrice = Number(ride.price_per_seat) * Number(seats);
+
+//         // Create Booking
+
+//         const [booking] = await connection.query(
+//             `INSERT INTO ride_bookings
+//             (
+//                 booking_code,
+//                 ride_id,
+//                 passenger_id,
+//                 seats,
+//                 ride_source,
+//                 ride_destination,
+//                 ride_date,
+//                 ride_time,
+//                 price_per_seat,
+//                 total_price,
+//                 created_at,
+//                 updated_at
+//             )
+//             VALUES
+//             (?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
+//             [
+//                 bookingCode,
+//                 ride.id,
+//                 req.user.id,
+//                 seats,
+//                 ride.source_address,
+//                 ride.destination_address,
+//                 ride.ride_date,
+//                 ride.departure_time,
+//                 ride.price_per_seat,
+//                 totalPrice
+//             ]
+//         );
+
+//         const bookingId = booking.insertId;
+
+//         // Razorpay Order
+//         const order = await razorpay.orders.create({
+//             receipt: `booking_${bookingId}`,
+//             amount: totalPrice * 100,
+//             currency: "INR"
+//         });
+
+//         // Save Payment
+
+//         await connection.query(
+//             `INSERT INTO payments
+//             (
+//                 booking_code,
+//                 booking_id,
+//                 order_id,
+//                 payment_status,
+//                 created_at,
+//                 updated_at
+//             )
+//             VALUES
+//             (?,?,?,'unpaid',NOW(),NOW())`,
+//             [
+//                 bookingCode,
+//                 bookingId,
+//                 order.id
+//             ]
+//         );
+
+//         await connection.commit();
+
+//         return res.json({
+//             status: "success",
+//             booking_id: bookingId,
+//             order_id: order.id,
+//             amount: totalPrice,
+//             razorpay_key: process.env.RAZORPAY_KEY
+//         });
+//     } catch (err) {
+//         await connection.rollback();
+//         return res.status(500).json({
+//             status: "error",
+//             message: err.message
+//         });
+//     } finally {
+//         connection.release();
+//     }
+
+// };
 
 exports.store = async (req, res) => {
-    const connection = await db.getConnection();
-    try {
-        const { ride_id, seats } = req.body;
-        // Validation
-        if (!ride_id) {
-            return res.status(422).json({
-                status: "error",
-                message: "Ride is required."
-            });
-        }
+  let connection;
 
-        if (!seats || seats <= 0) {
-            return res.status(422).json({
-                status: "error",
-                message: "Seats are required."
-            });
-        }
+  try {
+    connection = await db.getConnection();
 
-        await connection.beginTransaction();
+    const { ride_id, seats } = req.body;
+    const passengerId = req.user?.id;
 
-        const [rides] = await connection.query(
-            `SELECT *
+    if (!passengerId) {
+      return res.status(401).json({
+        status: "error",
+        message: "Unauthorized.",
+      });
+    }
+
+    if (!ride_id) {
+      return res.status(422).json({
+        status: "error",
+        message: "Ride is required.",
+      });
+    }
+
+    const requestedSeats = Number(seats);
+
+    if (!Number.isInteger(requestedSeats) || requestedSeats <= 0) {
+      return res.status(422).json({
+        status: "error",
+        message: "Seats must be a valid positive number.",
+      });
+    }
+
+    await connection.beginTransaction();
+
+    const [rides] = await connection.query(
+      `
+            SELECT
+                id,
+                driver_id,
+                source_address,
+                destination_address,
+                ride_date,
+                departure_time,
+                price_per_seat,
+                available_seats,
+                status
             FROM rides
-            WHERE id=?
-            FOR UPDATE`,
-            [ride_id]
-        );
+            WHERE id = ?
+            FOR UPDATE
+            `,
+      [ride_id],
+    );
 
-        const ride = rides[0];
+    // Check ride existence BEFORE doing anything else
+    if (rides.length === 0) {
+      await connection.rollback();
 
-        // Check seats
-        // Create booking
+      return res.status(404).json({
+        status: "error",
+        message: "Ride not found.",
+      });
+    }
 
-        await connection.commit();
+    const ride = rides[0];
 
-        if (rides.length === 0) {
+    if (String(ride.driver_id) === String(passengerId)) {
+      await connection.rollback();
 
-            await connection.rollback();
+      return res.status(400).json({
+        status: "error",
+        message: "Driver cannot book their own ride.",
+      });
+    }
 
-            return res.status(404).json({
-                status: "error",
-                message: "Ride not found."
-            });
+    const allowedStatuses = ["scheduled", "published", "active"];
 
-        }
+    if (
+      ride.status &&
+      !allowedStatuses.includes(String(ride.status).toLowerCase())
+    ) {
+      await connection.rollback();
 
+      return res.status(400).json({
+        status: "error",
+        message: "This ride is not available for booking.",
+      });
+    }
 
-        // Prevent self booking
+    const availableSeats = Number(ride.available_seats);
 
-        if (ride.driver_id == req.user.id) {
+    if (!Number.isInteger(availableSeats) || availableSeats <= 0) {
+      await connection.rollback();
 
-            await connection.rollback();
+      return res.status(400).json({
+        status: "error",
+        message: "No seats are available for this ride.",
+      });
+    }
 
-            return res.status(400).json({
-                status: "error",
-                message: "Driver cannot book own ride"
-            });
+    if (availableSeats < requestedSeats) {
+      await connection.rollback();
 
-        }
+      return res.status(400).json({
+        status: "error",
+        message: `Only ${availableSeats} seat(s) are available.`,
+      });
+    }
 
-        // Seat check
-
-        if (ride.available_seats < seats) {
-
-            await connection.rollback();
-
-            return res.status(400).json({
-                status: "error",
-                message: "Seats not available"
-            });
-
-        }
-
-        // Duplicate booking check (optional)
-
-
-        const [bookingExists] = await connection.query(
-            `SELECT id
+    const [existingBookings] = await connection.query(
+      `
+            SELECT id
             FROM ride_bookings
-            WHERE ride_id=?
-            AND passenger_id=?
-            AND status IN ('pending','confirmed')
-            LIMIT 1`,
-            [ride.id, req.user.id]
-        );
+            WHERE ride_id = ?
+            AND passenger_id = ?
+            AND status IN ('pending', 'confirmed')
+            LIMIT 1
+            `,
+      [ride.id, passengerId],
+    );
 
-        if (bookingExists.length > 0) {
+    if (existingBookings.length > 0) {
+      await connection.rollback();
 
-            await connection.rollback();
+      return res.status(400).json({
+        status: "error",
+        message: "You already have an active booking for this ride.",
+      });
+    }
 
-            return res.status(400).json({
-                status: "error",
-                message: "You have a Booking already exists for the ride."
-            });
-        }
+    const pricePerSeat = Number(ride.price_per_seat);
 
+    if (!Number.isFinite(pricePerSeat) || pricePerSeat < 0) {
+      await connection.rollback();
 
-        const bookingCode = "BK" + Date.now();
-        const totalPrice = Number(ride.price_per_seat) * Number(seats);
+      return res.status(500).json({
+        status: "error",
+        message: "Invalid ride price.",
+      });
+    }
 
-        // Create Booking
+    const totalPrice = Number((pricePerSeat * requestedSeats).toFixed(2));
 
-        const [booking] = await connection.query(
-            `INSERT INTO ride_bookings
+    // Razorpay amount must be in paise
+    const razorpayAmount = Math.round(totalPrice * 100);
+    const randomPart = crypto.randomBytes(4).toString("hex").toUpperCase();
+    const bookingCode = `BK${Date.now()}${randomPart}`;
+    const [bookingResult] = await connection.query(
+      `
+            INSERT INTO ride_bookings
             (
                 booking_code,
                 ride_id,
@@ -129,38 +354,59 @@ exports.store = async (req, res) => {
                 ride_time,
                 price_per_seat,
                 total_price,
+                status,
                 created_at,
                 updated_at
             )
             VALUES
-            (?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
-            [
-                bookingCode,
-                ride.id,
-                req.user.id,
-                seats,
-                ride.source_address,
-                ride.destination_address,
-                ride.ride_date,
-                ride.departure_time,
-                ride.price_per_seat,
-                totalPrice
-            ]
-        );
+            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW(), NOW())
+            `,
+      [
+        bookingCode,
+        ride.id,
+        passengerId,
+        requestedSeats,
+        ride.source_address,
+        ride.destination_address,
+        ride.ride_date,
+        ride.departure_time,
+        pricePerSeat,
+        totalPrice,
+      ],
+    );
 
-        const bookingId = booking.insertId;
+    const bookingId = bookingResult.insertId;
 
-        // Razorpay Order
-        const order = await razorpay.orders.create({
-            receipt: `booking_${bookingId}`,
-            amount: totalPrice * 100,
-            currency: "INR"
-        });
+    const [updateResult] = await connection.query(
+      `
+            UPDATE rides
+            SET
+                available_seats = available_seats - ?,
+                updated_at = NOW()
+            WHERE id = ?
+            AND available_seats >= ?
+            `,
+      [requestedSeats, ride.id, requestedSeats],
+    );
 
-        // Save Payment
+    // Safety check
+    if (updateResult.affectedRows !== 1) {
+      throw new Error("Unable to reserve the requested seats.");
+    }
 
-        await connection.query(
-            `INSERT INTO payments
+    const order = await razorpay.orders.create({
+      receipt: `booking_${bookingId}`,
+      amount: razorpayAmount,
+      currency: "INR",
+    });
+
+    if (!order || !order.id) {
+      throw new Error("Unable to create Razorpay order.");
+    }
+
+    await connection.query(
+      `
+            INSERT INTO payments
             (
                 booking_code,
                 booking_id,
@@ -170,195 +416,193 @@ exports.store = async (req, res) => {
                 updated_at
             )
             VALUES
-            (?,?,?,'unpaid',NOW(),NOW())`,
-            [
-                bookingCode,
-                bookingId,
-                order.id
-            ]
-        );
+            (?, ?, ?, 'unpaid', NOW(), NOW())
+            `,
+      [bookingCode, bookingId, order.id],
+    );
 
-        await connection.commit();
+    await connection.commit();
 
-        return res.json({
-            status: "success",
-            booking_id: bookingId,
-            order_id: order.id,
-            amount: totalPrice,
-            razorpay_key: process.env.RAZORPAY_KEY
-        });
-    } catch (err) {
+    return res.status(201).json({
+      status: "success",
+      message: "Booking created successfully.",
+      booking_id: bookingId,
+      booking_code: bookingCode,
+      order_id: order.id,
+      amount: totalPrice,
+      currency: "INR",
+      razorpay_key: process.env.RAZORPAY_KEY,
+    });
+  } catch (err) {
+    // Rollback only if connection exists
+    if (connection) {
+      try {
         await connection.rollback();
-        return res.status(500).json({
-            status: "error",
-            message: err.message
-        });
-    } finally {
-        connection.release();
+      } catch (rollbackError) {
+        console.error("Transaction rollback failed:", rollbackError);
+      }
     }
 
+    console.error("Create booking error:", err);
+
+    return res.status(500).json({
+      status: "error",
+      message: "Unable to create booking. Please try again.",
+    });
+  } finally {
+    if (connection) {
+      connection.release();
+    }
+  }
 };
 
 exports.paymentSuccess = async (req, res) => {
+  const connection = await db.getConnection();
 
-    const connection = await db.getConnection();
+  try {
+    const {
+      booking_id,
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+    } = req.body;
 
-    try {
+    if (
+      !booking_id ||
+      !razorpay_order_id ||
+      !razorpay_payment_id ||
+      !razorpay_signature
+    ) {
+      return res.status(422).json({
+        status: "error",
+        message: "Required fields are missing.",
+      });
+    }
 
-        const {
-            booking_id,
-            razorpay_order_id,
-            razorpay_payment_id,
-            razorpay_signature
-        } = req.body;
+    await connection.beginTransaction();
 
-        if (
-            !booking_id ||
-            !razorpay_order_id ||
-            !razorpay_payment_id ||
-            !razorpay_signature
-        ) {
-            return res.status(422).json({
-                status: "error",
-                message: "Required fields are missing."
-            });
-        }
-
-        await connection.beginTransaction();
-
-        // Lock Booking
-        const [bookings] = await connection.query(
-            `SELECT *
+    // Lock Booking
+    const [bookings] = await connection.query(
+      `SELECT *
             FROM ride_bookings
             WHERE id=?
             FOR UPDATE`,
-            [booking_id]
-        );
+      [booking_id],
+    );
 
-        if (bookings.length === 0) {
+    if (bookings.length === 0) {
+      await connection.rollback();
 
-            await connection.rollback();
+      return res.status(404).json({
+        status: "error",
+        message: "Booking not found.",
+      });
+    }
 
-            return res.status(404).json({
-                status: "error",
-                message: "Booking not found."
-            });
+    const booking = bookings[0];
 
-        }
+    // Already Paid
+    if (booking.payment_status === "paid") {
+      await connection.rollback();
 
-        const booking = bookings[0];
+      return res.json({
+        status: "error",
+        message: "Payment already processed.",
+      });
+    }
 
-        // Already Paid
-        if (booking.payment_status === "paid") {
+    const [payments] = await connection.query(
+      `SELECT * FROM payments WHERE booking_id = ? FOR UPDATE`,
+      [booking_id],
+    );
 
-            await connection.rollback();
+    if (payments.length === 0) {
+      await connection.rollback();
 
-            return res.json({
-                status: "error",
-                message: "Payment already processed."
-            });
+      return res.status(404).json({
+        status: "error",
+        message: "Payment record not found.",
+      });
+    }
 
-        }
+    const payment = payments[0];
 
-        const [payments] = await connection.query(
-            `SELECT * FROM payments WHERE booking_id = ? FOR UPDATE`,
-            [booking_id]
-        );
+    if (payment.order_id !== razorpay_order_id) {
+      await connection.rollback();
 
-        if (payments.length === 0) {
-            await connection.rollback();
+      return res.status(400).json({
+        status: "error",
+        message: "Invalid Razorpay order.",
+      });
+    }
 
-            return res.status(404).json({
-                status: "error",
-                message: "Payment record not found."
-            });
-        }
+    // Verify Razorpay Signature
+    // razorpay.utility.verifyPaymentSignature({
+    //     razorpay_order_id,
+    //     razorpay_payment_id,
+    //     razorpay_signature
+    // });
 
-        const payment = payments[0];
+    // Verify Razorpay Signature
+    try {
+      validatePaymentVerification(
+        {
+          order_id: razorpay_order_id,
+          payment_id: razorpay_payment_id,
+        },
+        razorpay_signature,
+        process.env.RAZORPAY_SECRET,
+      );
+    } catch (e) {
+      await connection.rollback();
 
-        if (payment.order_id !== razorpay_order_id) {
-            await connection.rollback();
-
-            return res.status(400).json({
-                status: "error",
-                message: "Invalid Razorpay order."
-            });
-        }
-
-        // Verify Razorpay Signature
-        // razorpay.utility.verifyPaymentSignature({
-        //     razorpay_order_id,
-        //     razorpay_payment_id,
-        //     razorpay_signature
-        // });
-
-        // Verify Razorpay Signature
-        try {
-            validatePaymentVerification(
-                {
-                    order_id: razorpay_order_id,
-                    payment_id: razorpay_payment_id
-                },
-                razorpay_signature,
-                process.env.RAZORPAY_SECRET
-            );
-        } catch (e) {
-            await connection.rollback();
-
-            return res.status(400).json({
-                status: "error",
-                message: e.message || "Invalid payment signature."
-            });
-        }
-        // Lock Ride
-        const [rides] = await connection.query(
-            `SELECT *
+      return res.status(400).json({
+        status: "error",
+        message: e.message || "Invalid payment signature.",
+      });
+    }
+    // Lock Ride
+    const [rides] = await connection.query(
+      `SELECT *
             FROM rides
             WHERE id=?
             FOR UPDATE`,
-            [booking.ride_id]
-        );
+      [booking.ride_id],
+    );
 
-        if (rides.length === 0) {
+    if (rides.length === 0) {
+      await connection.rollback();
 
-            await connection.rollback();
+      return res.status(404).json({
+        status: "error",
+        message: "Ride not found.",
+      });
+    }
 
-            return res.status(404).json({
-                status: "error",
-                message: "Ride not found."
-            });
+    const ride = rides[0];
 
-        }
+    // Recheck Seat Availability
+    if (ride.available_seats < booking.seats) {
+      await connection.rollback();
 
-        const ride = rides[0];
+      return res.status(400).json({
+        status: "error",
+        message: "Seats unavailable.",
+      });
+    }
 
-        // Recheck Seat Availability
-        if (ride.available_seats < booking.seats) {
-
-            await connection.rollback();
-
-            return res.status(400).json({
-                status: "error",
-                message: "Seats unavailable."
-            });
-
-        }
-
-        // Deduct Seats
-        await connection.query(
-            `UPDATE rides
+    // Deduct Seats
+    await connection.query(
+      `UPDATE rides
             SET available_seats = available_seats - ?,
                 updated_at = NOW()
             WHERE id=?`,
-            [
-                booking.seats,
-                ride.id
-            ]
-        );
+      [booking.seats, ride.id],
+    );
 
-        // Update Booking
-        await connection.query(
-            `UPDATE ride_bookings
+    // Update Booking
+    await connection.query(
+      `UPDATE ride_bookings
             SET
                 payment_id=?,
                 status='confirmed',
@@ -366,171 +610,148 @@ exports.paymentSuccess = async (req, res) => {
                 confirmed_at=NOW(),
                 updated_at=NOW()
             WHERE id=?`,
-            [razorpay_payment_id, booking.id]
-        );
+      [razorpay_payment_id, booking.id],
+    );
 
-        // Update Payment
-        await connection.query(
-            `UPDATE payments
+    // Update Payment
+    await connection.query(
+      `UPDATE payments
             SET
                 payment_id=?,
                 payment_status='paid',
                 updated_at=NOW()
                 WHERE booking_id=?`,
-            [
-                razorpay_payment_id,
-                booking.id
-            ]
-        );
+      [razorpay_payment_id, booking.id],
+    );
 
-        await connection.commit();
+    await connection.commit();
 
-        const [updatedRide] = await connection.query(
-            "SELECT id, available_seats FROM rides WHERE id=?",
-            [ride.id]
-        );
+    const [updatedRide] = await connection.query(
+      "SELECT id, available_seats FROM rides WHERE id=?",
+      [ride.id],
+    );
 
-        console.log("========== SOCKET TEST ==========");
-        console.log("Ride ID:", ride.id);
-        console.log("Room:", `ride-${ride.id}`);
-        console.log("Updated Ride:", updatedRide[0]);
+    console.log("========== SOCKET TEST ==========");
+    console.log("Ride ID:", ride.id);
+    console.log("Room:", `ride-${ride.id}`);
+    console.log("Updated Ride:", updatedRide[0]);
 
+    // Socket.IO Broadcast
+    const io = getIO();
 
-        // Socket.IO Broadcast
-        const io = getIO();
+    io.to(`ride-${ride.id}`).emit("ride-seat-updated", updatedRide[0]);
 
-        io.to(`ride-${ride.id}`).emit("ride-seat-updated", updatedRide[0]);
-
-
-        // 4. Fetch Details
-        const [userRows] = await connection.query(
-            `SELECT u.id, u.name, u.email, u.phone, u.role,
+    // 4. Fetch Details
+    const [userRows] = await connection.query(
+      `SELECT u.id, u.name, u.email, u.phone, u.role,
                 ud.city, ud.state, ud.country, ud.postal_code, ud.address,
                 ud.bank_account_holder, ud.bank_account_number, ud.bank_account_ifsc, ud.bank_name,
                 ud.driver_license, ud.adhhar_card, ud.pan_card, ud.bank_account, ud.profile_picture
         FROM users u
         LEFT JOIN user_details ud ON ud.user_id = u.id
         WHERE u.id = ?`,
-            [ride.driver_id],
-        );
+      [ride.driver_id],
+    );
 
-        return res.json({
-            status: "success",
-            message: "Payment successful",
-            bookingDetails: await Booking.getBookingDetails(booking_id),
-            rideDetails: await Ride.rideDetailsById(ride.id),
-            userDetails: userRows[0]
-        });
+    return res.json({
+      status: "success",
+      message: "Payment successful",
+      bookingDetails: await Booking.getBookingDetails(booking_id),
+      rideDetails: await Ride.rideDetailsById(ride.id),
+      userDetails: userRows[0],
+    });
+  } catch (err) {
+    await connection.rollback();
 
-    } catch (err) {
-
-        await connection.rollback();
-
-        return res.status(500).json({
-            status: "error",
-            message: err.message
-        });
-
-    } finally {
-
-        connection.release();
-
-    }
-
+    return res.status(500).json({
+      status: "error",
+      message: err.message,
+    });
+  } finally {
+    connection.release();
+  }
 };
 
 exports.paymentFailed = async (req, res) => {
+  const connection = await db.getConnection();
 
-    const connection = await db.getConnection();
+  try {
+    const { booking_id } = req.body;
 
-    try {
+    if (!booking_id) {
+      return res.status(422).json({
+        status: "error",
+        message: "Booking ID is required.",
+      });
+    }
 
-        const { booking_id } = req.body;
+    await connection.beginTransaction();
 
-        if (!booking_id) {
-            return res.status(422).json({
-                status: "error",
-                message: "Booking ID is required."
-            });
-        }
-
-        await connection.beginTransaction();
-
-        // Lock booking
-        const [bookings] = await connection.query(
-            `SELECT *
+    // Lock booking
+    const [bookings] = await connection.query(
+      `SELECT *
              FROM ride_bookings
              WHERE id=?
              FOR UPDATE`,
-            [booking_id]
-        );
+      [booking_id],
+    );
 
-        if (bookings.length === 0) {
+    if (bookings.length === 0) {
+      await connection.rollback();
 
-            await connection.rollback();
+      return res.status(404).json({
+        status: "error",
+        message: "Booking not found.",
+      });
+    }
 
-            return res.status(404).json({
-                status: "error",
-                message: "Booking not found."
-            });
+    const booking = bookings[0];
 
-        }
+    // Prevent changing already paid booking
+    if (booking.payment_status === "paid") {
+      await connection.rollback();
 
-        const booking = bookings[0];
+      return res.status(400).json({
+        status: "error",
+        message: "Payment already completed.",
+      });
+    }
 
-        // Prevent changing already paid booking
-        if (booking.payment_status === "paid") {
-
-            await connection.rollback();
-
-            return res.status(400).json({
-                status: "error",
-                message: "Payment already completed."
-            });
-
-        }
-
-        // Update Booking
-        await connection.query(
-            `UPDATE ride_bookings
+    // Update Booking
+    await connection.query(
+      `UPDATE ride_bookings
              SET
                 status='cancelled',
                 payment_status='failed',
                 updated_at=NOW()
              WHERE id=?`,
-            [booking.id]
-        );
+      [booking.id],
+    );
 
-        // Update Payment
-        await connection.query(
-            `UPDATE payments
+    // Update Payment
+    await connection.query(
+      `UPDATE payments
              SET
                 payment_status='failed',
                 updated_at=NOW()
              WHERE booking_id=?`,
-            [booking.id]
-        );
+      [booking.id],
+    );
 
-        await connection.commit();
+    await connection.commit();
 
-        return res.json({
-            status: "success",
-            message: "Payment marked as failed."
-        });
+    return res.json({
+      status: "success",
+      message: "Payment marked as failed.",
+    });
+  } catch (err) {
+    await connection.rollback();
 
-    } catch (err) {
-
-        await connection.rollback();
-
-        return res.status(500).json({
-            status: "error",
-            message: err.message
-        });
-
-    } finally {
-
-        connection.release();
-
-    }
-
+    return res.status(500).json({
+      status: "error",
+      message: err.message,
+    });
+  } finally {
+    connection.release();
+  }
 };
