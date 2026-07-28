@@ -9,8 +9,8 @@ module.exports = {
     io = new Server(httpServer, {
       cors: {
         origin: allowedOrigins,
-        credentials: true
-      }
+        credentials: true,
+      },
     });
 
     // Public connection handler (No JWT check on connection)
@@ -21,7 +21,9 @@ module.exports = {
       socket.on("join_conversation", async ({ conversationId, userId }) => {
         try {
           if (!conversationId || !userId) {
-            return socket.emit("error", { message: "conversationId and userId are required" });
+            return socket.emit("error", {
+              message: "conversationId and userId are required",
+            });
           }
 
           const conversation = await Conversation.findById(conversationId);
@@ -37,12 +39,16 @@ module.exports = {
 
           // Verify if the claiming user is part of this conversation
           if (numericUserId !== driverId && numericUserId !== passengerId) {
-            return socket.emit("error", { message: "Unauthorized room access" });
+            return socket.emit("error", {
+              message: "Unauthorized room access",
+            });
           }
 
           const roomName = `conversation_${conversationId}`;
           socket.join(roomName);
-          console.log(`User ${userId} (Socket ${socket.id}) joined room: ${roomName}`);
+          console.log(
+            `User ${userId} (Socket ${socket.id}) joined room: ${roomName}`,
+          );
 
           socket.emit("joined_room", { room: roomName, success: true });
         } catch (error) {
@@ -61,16 +67,14 @@ module.exports = {
       socket.on("join_ride", (rideId) => {
         socket.join(`ride-${rideId}`);
 
-        console.log(
-          `Socket ${socket.id} joined ride room: ride-${rideId}`
-        );
+        console.log(`Socket ${socket.id} joined ride room: ride-${rideId}`);
 
         socket.emit("ride_joined", {
           room: `ride-${rideId}`,
           success: true,
         });
       });
-      
+
       socket.on("disconnect", () => {
         console.log(`Socket disconnected: ID ${socket.id}`);
       });
@@ -84,5 +88,5 @@ module.exports = {
       throw new Error("Socket.io is not initialized!");
     }
     return io;
-  }
+  },
 };
