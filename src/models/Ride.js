@@ -33,6 +33,7 @@ class Ride {
             r.smoking_allowed,
             r.instant_booking,
             r.price_per_seat,
+            r.total_seats,
             r.available_seats,
             r.status,
             r.created_at,

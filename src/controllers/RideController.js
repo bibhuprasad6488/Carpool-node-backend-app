@@ -124,6 +124,32 @@ exports.store = async (req, res) => {
 
   const driver_id = req.user.id;
 
+  // Check in existing ride 
+  const [activeRide] = await connection.execute(
+    `
+    SELECT id, departure_time, estimated_reach_time
+    FROM rides
+    WHERE driver_id = ?
+      AND ride_date = ?
+      AND estimated_reach_time > ?
+    ORDER BY estimated_reach_time DESC
+    LIMIT 1
+    `,
+    [
+      driver_id,
+      ride_date,
+      departure_time
+    ]
+  );
+
+  if (activeRide.length > 0) {
+    return res.status(400).json({
+      status: "error",
+      message: `You cannot publish a new ride until your previous ride is completed. Previous ride ends at ${activeRide[0].estimated_reach_time}.`
+    });
+  }
+
+
   const departureDateTime = new Date(`${ride_date} ${departure_time}`);
   const departureTimestamp = Math.floor(departureDateTime.getTime() / 1000);
 
