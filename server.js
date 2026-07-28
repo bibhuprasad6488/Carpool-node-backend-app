@@ -42,7 +42,7 @@ app.use('/api/v1/admin', adminRoutes)
 const server = http.createServer(app);
 
 // Initialize Socket.IO
-const socket = require("./src/sockets");
+const socket = require("./socket");
 socket.init(server);
 
 const PORT = process.env.PORT || 3000;

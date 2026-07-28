@@ -1,7 +1,7 @@
 const Conversation = require("../models/Conversation");
 const Message = require("../models/Message");
 const { validationResult } = require("express-validator");
-const { getIO } = require("../config/socket");
+const { getIO } = require("../socket");
 
 exports.conversation = async (req, res) => {
     try {
