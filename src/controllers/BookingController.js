@@ -99,7 +99,6 @@ exports.store = async (req, res) => {
 
         // Duplicate booking check (optional)
 
-
         const [bookingExists] = await connection.query(
             `SELECT id
             FROM ride_bookings
@@ -168,7 +167,6 @@ exports.store = async (req, res) => {
         });
 
         // Save Payment
-
         await connection.query(
             `INSERT INTO payments
             (
@@ -188,11 +186,50 @@ exports.store = async (req, res) => {
             ]
         );
 
+
+        // Deduct Seats
+        await connection.query(
+            `UPDATE rides
+            SET available_seats = available_seats - ?,
+                updated_at = NOW()
+            WHERE id=?`,
+            [
+                seats,
+                ride_id
+            ]
+        );
+
         await connection.commit();
+
+        const [updatedRide] = await connection.query(
+            "SELECT id, available_seats FROM rides WHERE id=?",
+            [ride.id]
+        );
+
+        // console.log("========== SOCKET TEST ==========");
+        // console.log("Ride ID:", ride.id);
+        // console.log("Room:", `ride-${ride.id}`);
+        // console.log("Updated Ride:", updatedRide[0]);
+
+
+        // Socket.IO Broadcast
+        const io = getIO();
+
+        io.to(`ride-${ride.id}`).emit("ride-seat-updated", updatedRide[0]);
+
+        const [rows] = await connection.query(
+            `SELECT created_at
+                FROM ride_bookings
+                WHERE id = ?`,
+            [bookingId]
+        );
+
+        const formattedCreatedAt = rows[0].created_at;
 
         return res.json({
             status: "success",
             booking_id: bookingId,
+            creationTime: formattedCreatedAt,
             order_id: order.id,
             amount: totalPrice,
             razorpay_key: process.env.RAZORPAY_KEY
@@ -320,12 +357,12 @@ exports.paymentSuccess = async (req, res) => {
                 message: e.message || "Invalid payment signature."
             });
         }
+
         // Lock Ride
         const [rides] = await connection.query(
             `SELECT *
             FROM rides
-            WHERE id=?
-            FOR UPDATE`,
+            WHERE id=?`,
             [booking.ride_id]
         );
 
@@ -342,29 +379,17 @@ exports.paymentSuccess = async (req, res) => {
 
         const ride = rides[0];
 
-        // Recheck Seat Availability
-        if (ride.available_seats < booking.seats) {
+        // // Recheck Seat Availability
+        // if (ride.available_seats < booking.seats) {
 
-            await connection.rollback();
+        //     await connection.rollback();
 
-            return res.status(400).json({
-                status: "error",
-                message: "Seats unavailable."
-            });
+        //     return res.status(400).json({
+        //         status: "error",
+        //         message: "Seats unavailable."
+        //     });
 
-        }
-
-        // Deduct Seats
-        await connection.query(
-            `UPDATE rides
-            SET available_seats = available_seats - ?,
-                updated_at = NOW()
-            WHERE id=?`,
-            [
-                booking.seats,
-                ride.id
-            ]
-        );
+        // }
 
         // Update Booking
         await connection.query(
@@ -394,23 +419,6 @@ exports.paymentSuccess = async (req, res) => {
         );
 
         await connection.commit();
-
-        const [updatedRide] = await connection.query(
-            "SELECT id, available_seats FROM rides WHERE id=?",
-            [ride.id]
-        );
-
-        console.log("========== SOCKET TEST ==========");
-        console.log("Ride ID:", ride.id);
-        console.log("Room:", `ride-${ride.id}`);
-        console.log("Updated Ride:", updatedRide[0]);
-
-
-        // Socket.IO Broadcast
-        const io = getIO();
-
-        io.to(`ride-${ride.id}`).emit("ride-seat-updated", updatedRide[0]);
-
 
         // 4. Fetch Details
         const [userRows] = await connection.query(
@@ -454,7 +462,7 @@ exports.paymentFailed = async (req, res) => {
     const connection = await db.getConnection();
 
     try {
-        const { booking_id } = req.body;
+        const { booking_id, reason } = req.body;
 
         if (!booking_id) {
             return res.status(422).json({
@@ -551,22 +559,33 @@ exports.paymentFailed = async (req, res) => {
             SET
             status='cancelled',
             payment_status='failed',
-            updated_at=NOW()
+            updated_at=NOW(),
+            reason_of_cancel=?
             WHERE id=?`,
-            [booking.id]
+            [reason, booking.id]
         );
 
         // Update Payment
         await connection.query(
             `UPDATE payments
-             SET
+                SET
                 payment_status='failed',
                 updated_at=NOW()
-             WHERE booking_id=?`,
+                WHERE booking_id=?`,
             [booking.id]
         );
 
         await connection.commit();
+
+        const [updatedRide] = await connection.query(
+            "SELECT id, available_seats FROM rides WHERE id=?",
+            [booking.ride_id]
+        );
+
+        // Socket.IO Broadcast
+        const io = getIO();
+
+        io.to(`ride-${ride.id}`).emit("ride-seat-updated", updatedRide[0]);
 
         return res.json({
             status: "success",

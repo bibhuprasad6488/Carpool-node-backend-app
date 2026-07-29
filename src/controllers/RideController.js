@@ -102,6 +102,7 @@ exports.searchLocations = async (req, res) => {
 };
 
 exports.store = async (req, res) => {
+  const connection = await db.getConnection();
   const {
     vehicle_id,
     source_address,
