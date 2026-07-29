@@ -230,6 +230,65 @@ LEFT JOIN vehicles v
     const [result] = await db.query(sql, [rideId]);
     return result.affectedRows > 0;
   }
+
+  static async getByDriverId(driverId) {
+    const sql = `
+      SELECT
+        r.id,
+        r.source_address,
+        r.destination_address,
+        r.price_per_seat,
+        r.status,
+        r.total_seats,
+        r.available_seats,
+        r.ride_date,
+        r.departure_time,
+        
+        v.id AS vehicle_id,
+        v.model AS vehicle_model,
+        v.registration_number AS vehicle_registration_number,
+        v.fuel_type AS vehicle_fuel_type
+      FROM rides r
+      LEFT JOIN vehicles v 
+        ON v.id = r.vehicle_id
+      WHERE r.driver_id = ?
+      ORDER BY r.ride_date DESC, r.departure_time DESC
+    `;
+
+    const [rows] = await db.execute(sql, [driverId]);
+    return rows;
+  }
+
+  static async getByPassengerId(passengerId) {
+    const sql = `
+      SELECT
+        r.id AS ride_id,
+        r.source_address,
+        r.destination_address,
+        r.price_per_seat,
+        r.ride_date,
+        r.departure_time,
+        r.status AS ride_status,
+        
+        b.id AS booking_id,
+        b.seats,
+        b.status AS booking_status,
+        
+        u.id AS driver_id,
+        u.name AS driver_name,
+        u.phone AS driver_phone
+      FROM ride_bookings b
+      INNER JOIN rides r 
+        ON r.id = b.ride_id
+      LEFT JOIN users u 
+        ON u.id = r.driver_id
+      WHERE b.passenger_id = ?
+      ORDER BY r.ride_date DESC, r.departure_time DESC
+    `;
+
+    const [rows] = await db.execute(sql, [passengerId]);
+    return rows;
+  }
 }
 
 module.exports = RideManagement;

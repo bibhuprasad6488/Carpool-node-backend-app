@@ -18,7 +18,6 @@ exports.getAllRides = async (req, res) => {
 exports.getRideDetails = async (req, res) => {
   try {
     const { id } = req.params;
-
     if (!id) {
       return res.status(400).json({
         status: "fail",
@@ -165,6 +164,60 @@ exports.deleteRide = async (req, res) => {
     return res.status(500).json({
       status: "error",
       message: "Internal server error while deleting ride",
+    });
+  }
+};
+
+exports.getDriverRides = async (req, res) => {
+  try {
+    const driverId = req.params.driverId || req.user?.id;
+    if (!driverId) {
+      return res.status(400).json({
+        success: false,
+        message: "Driver ID is required.",
+      });
+    }
+
+    const rides = await RideManagement.getByDriverId(driverId);
+
+    return res.status(200).json({
+      success: true,
+      count: rides.length,
+      data: rides,
+    });
+  } catch (error) {
+    console.error("Error fetching driver rides:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error while fetching driver rides.",
+      error: error.message,
+    });
+  }
+};
+
+exports.getPassengerRides = async (req, res) => {
+  try {
+    const passengerId = req.params.passengerId || req.user?.id;
+    if (!passengerId) {
+      return res.status(400).json({
+        success: false,
+        message: "Passenger ID is required.",
+      });
+    }
+
+    const rides = await RideManagement.getByPassengerId(passengerId);
+
+    return res.status(200).json({
+      success: true,
+      count: rides.length,
+      data: rides,
+    });
+  } catch (error) {
+    console.error("Error fetching passenger rides:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error while fetching passenger rides.",
+      error: error.message,
     });
   }
 };

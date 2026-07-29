@@ -33,7 +33,6 @@ exports.store = async (req, res) => {
         }
 
         await connection.beginTransaction();
-
         const [rides] = await connection.query(
             `SELECT *
             FROM rides
@@ -46,27 +45,18 @@ exports.store = async (req, res) => {
 
         // Check seats
         // Create booking
-
         await connection.commit();
-
         if (rides.length === 0) {
-
             await connection.rollback();
-
             return res.status(404).json({
                 status: "error",
                 message: "Ride not found."
             });
-
         }
 
-
         // Prevent self booking
-
         if (ride.driver_id == req.user.id) {
-
             await connection.rollback();
-
             return res.status(400).json({
                 status: "error",
                 message: "Driver cannot book own ride"

@@ -6,9 +6,7 @@ const { getIO } = require("../../socket");
 exports.conversation = async (req, res) => {
     try {
         const { bookingId } = req.params;
-
         const conversation = await Conversation.findByBookingId(bookingId);
-
         if (!conversation) {
             return res.status(404).json({
                 status: "error",

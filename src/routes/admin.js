@@ -8,6 +8,8 @@ const {
     deleteRide,
     updateRide,
     createRide,
+    getDriverRides,
+    getPassengerRides,
 } = require("../controllers/admin/RideManagement");
 const adminUserController = require("../controllers/admin/UserManagement");
 const { getAllActivityLogs } = require("../controllers/admin/ActivityLogs");
@@ -43,6 +45,8 @@ router.get("/rides/:id", auth, isAdmin, getRideDetails);
 router.post("/rides", auth, isAdmin, createRide);
 router.put("/rides/:id", auth, isAdmin, updateRide);
 router.delete("/rides/:id", auth, isAdmin, deleteRide);
+router.get("/rides/driver/:driverId", auth, isAdmin, getDriverRides);
+router.get("/rides/passenger/:passengerId", auth, isAdmin, getPassengerRides);
 
 router.get("/drivers", auth, isAdmin, getAllDrivers);
 router.get("/drivers/:id", auth, isAdmin, getDriverById);
