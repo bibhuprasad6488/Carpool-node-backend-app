@@ -224,12 +224,20 @@ exports.store = async (req, res) => {
             [bookingId]
         );
 
-        const formattedCreatedAt = rows[0].created_at;
+        const createdAt = new Date(rows[0].created_at);
+        const expiryTime = new Date(createdAt.getTime() + 5 * 60 * 1000);
 
+        const formattedExpiryTime = expiryTime
+            .toISOString()
+            .slice(0, 19)
+            .replace("T", " ");
+
+        // console.log(formattedExpiryTime);
         return res.json({
             status: "success",
             booking_id: bookingId,
-            creationTime: formattedCreatedAt,
+            creationTime: createdAt,
+            ExpiryTime: expiryTime,
             order_id: order.id,
             amount: totalPrice,
             razorpay_key: process.env.RAZORPAY_KEY
@@ -303,6 +311,18 @@ exports.paymentSuccess = async (req, res) => {
             return res.json({
                 status: "error",
                 message: "Payment already processed."
+            });
+
+        }
+
+        // Already cancelled
+        if (booking.payment_status === "failed") {
+
+            await connection.rollback();
+
+            return res.json({
+                status: "error",
+                message: "Payment already failed and booking cancelled."
             });
 
         }
@@ -553,6 +573,8 @@ exports.paymentFailed = async (req, res) => {
             );
         }
 
+        const ride = rides[0];
+
         // Update Booking
         await connection.query(
             `UPDATE ride_bookings
@@ -587,9 +609,34 @@ exports.paymentFailed = async (req, res) => {
 
         io.to(`ride-${ride.id}`).emit("ride-seat-updated", updatedRide[0]);
 
+        const rideData = await Ride.rideDetailsById(booking.ride_id);
+
+        // Vehicle Details
+        const vehicleDetails = await Vehicle.getByVehicleId(rideData.vehicle_id);
+
+        if (vehicleDetails) {
+            rideData.vehicle_details = vehicleDetails;
+        }
+
+        // Driver Details
+        const user = await User.findById(rideData.driver_id);
+
+        if (user) {
+            const userDetails = await User.getUserDetailsById(user.id);
+
+            rideData.driver_details = {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                phone: user.phone,
+                user_details: userDetails,
+            };
+        }
+
         return res.json({
             status: "success",
-            message: "Payment marked as failed."
+            message: "Payment marked as failed.",
+            ride: rideFormatData(rideData)
         });
 
     } catch (err) {
@@ -609,3 +656,39 @@ exports.paymentFailed = async (req, res) => {
 
     }
 };
+
+
+// private function for format
+function rideFormatData(ride) {
+    return {
+        id: ride.id,
+        driver_id: ride.driver_id,
+        vehicle_id: ride.vehicle_id,
+        source_address: ride.source_address,
+        source_place_id: ride.source_place_id,
+        destination_address: ride.destination_address,
+        destination_place_id: ride.destination_place_id,
+        source_lat: ride.source_lat,
+        source_lng: ride.source_lng,
+        destination_lat: ride.destination_lat,
+        destination_lng: ride.destination_lng,
+        ride_date: ride.ride_date,
+        departure_time: ride.departure_time,
+        polyline: ride.polyline,
+        distance_meters: ride.distance_meters,
+        duration_seconds: ride.duration_seconds,
+        estimated_reach_time: ride.estimated_reach_time,
+        pet_allowed: ride.pet_allowed,
+        smoking_allowed: ride.smoking_allowed,
+        instant_booking: ride.instant_booking,
+        max_two_in_back: ride.max_two_in_back,
+        price_per_seat: ride.price_per_seat,
+        total_seats: ride.total_seats,
+        available_seats: ride.available_seats,
+        status: ride.status,
+        // total_price: ride.total_price,
+        vehicle_details: ride.vehicle_details,
+        driver_details: ride.driver_details,
+        // route_points: ride.route_points
+    };
+}
