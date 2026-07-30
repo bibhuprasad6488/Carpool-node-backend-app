@@ -34,15 +34,15 @@ exports.getUsers = async (req, res) => {
       }
 
       // Role mapping (Handles string and integer roles)
-      let roleLabel = "Rider";
+      let roleLabel = "Passenger";
       const rawRole = String(u.role).toLowerCase();
 
       if (rawRole === "1" || rawRole === "admin") {
         roleLabel = "Admin";
       } else if (rawRole === "2" || rawRole === "driver") {
         roleLabel = "Driver";
-      } else if (rawRole === "3" || rawRole === "rider") {
-        roleLabel = "Rider";
+      } else if (rawRole === "3" || rawRole === "passenger") {
+        roleLabel = "Passenger";
       } else if (u.role) {
         // Capitalize default fallback role string
         roleLabel = rawRole.charAt(0).toUpperCase() + rawRole.slice(1);
@@ -105,15 +105,15 @@ exports.getUserDetails = async (req, res) => {
     }
 
     // Role mapping fallback
-    let roleLabel = "Rider";
+    let roleLabel = "Passenger";
     const rawRole = String(user.role).toLowerCase();
 
     if (rawRole === "1" || rawRole === "admin") {
       roleLabel = "Admin";
     } else if (rawRole === "2" || rawRole === "driver") {
       roleLabel = "Driver";
-    } else if (rawRole === "3" || rawRole === "rider") {
-      roleLabel = "Rider";
+    } else if (rawRole === "3" || rawRole === "Passenger") {
+      roleLabel = "Passenger";
     } else if (user.role) {
       roleLabel = rawRole.charAt(0).toUpperCase() + rawRole.slice(1);
     }

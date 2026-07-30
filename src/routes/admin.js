@@ -10,6 +10,7 @@ const {
     createRide,
     getDriverRides,
     getPassengerRides,
+    getFullRideDetails,
 } = require("../controllers/admin/RideManagement");
 const adminUserController = require("../controllers/admin/UserManagement");
 const { getAllActivityLogs } = require("../controllers/admin/ActivityLogs");
@@ -17,6 +18,7 @@ const {
     updateVehicleStatus,
     getAllVehicles,
     getVehicleById,
+    getVehiclesByUser,
 } = require("../controllers/admin/VeichleController");
 const adminAuthController = require("../controllers/admin/AuthController");
 const {
@@ -29,6 +31,7 @@ const {
     getConversationMessages,
     createConversation,
 } = require("../controllers/admin/ChatManagement");
+const paymentController = require("../controllers/admin/paymentController");
 
 router.get("/dashboard", auth, isAdmin, (req, res) => {
     res.json({ message: "Welcome to the admin panel backend!" });
@@ -42,6 +45,7 @@ router.patch("/users/:id", auth, isAdmin, adminUserController.updateUserStatus);
 
 router.get("/rides", auth, isAdmin, getAllRides);
 router.get("/rides/:id", auth, isAdmin, getRideDetails);
+router.get('/rides/details/:rideId', auth, isAdmin, getFullRideDetails);
 router.post("/rides", auth, isAdmin, createRide);
 router.put("/rides/:id", auth, isAdmin, updateRide);
 router.delete("/rides/:id", auth, isAdmin, deleteRide);
@@ -55,10 +59,16 @@ router.patch("/drivers/:id", auth, isAdmin, updateUserStatus);
 router.get("/vehicles", auth, isAdmin, getAllVehicles);
 router.get("/vehicles/:id", auth, isAdmin, getVehicleById);
 router.patch("/vehicles/:id", auth, isAdmin, updateVehicleStatus);
+router.get('/vehicles/user/:userId', auth, isAdmin, getVehiclesByUser);
 
 router.get("/conversations", auth, isAdmin, getConversations);
 router.post("/conversations", auth, isAdmin, createConversation);
 router.get("/:id/messages", auth, isAdmin, getConversationMessages);
+
+router.get('/payments/', auth, isAdmin, paymentController.getAllPayments);
+router.get('/payments/:id', auth, isAdmin, paymentController.getPaymentById);
+router.patch('/payments/:id/', paymentController.updatePaymentStatus);
+router.get('/payments/passenger/:passengerId', auth, isAdmin, paymentController.getPassengerTransactions);
 
 router.get("/activity-logs", auth, isAdmin, getAllActivityLogs);
 

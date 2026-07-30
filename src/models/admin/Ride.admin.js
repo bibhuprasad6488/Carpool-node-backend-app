@@ -289,6 +289,176 @@ LEFT JOIN vehicles v
     const [rows] = await db.execute(sql, [passengerId]);
     return rows;
   }
+
+ static async getFullRideDetailsById(rideId) {
+    // 1. Fetch main Ride, Driver, and Vehicle information
+    const rideQuery = `
+      SELECT 
+        r.id AS ride_id,
+        r.status AS ride_status,
+        r.created_at AS created_at,
+        r.source_address,
+        r.destination_address,
+        r.ride_date,
+        r.departure_time,
+        r.estimated_reach_time,
+        r.distance_meters,
+        r.duration_seconds,
+        r.price_per_seat,
+        r.total_seats,
+        r.available_seats,
+        -- Driver Info
+        u.id AS driver_id,
+        u.name AS driver_name,
+        u.phone AS driver_phone,
+        u.email AS driver_email,
+        ud.profile_picture AS driver_profile_picture,
+        -- Vehicle Info
+        v.id AS vehicle_id,
+        v.brand AS vehicle_brand,
+        v.model AS vehicle_model,
+        v.color AS vehicle_color,
+        v.vehicle_type,
+        v.registration_number AS vehicle_registration_number
+      FROM rides r
+      INNER JOIN users u ON r.driver_id = u.id
+      LEFT JOIN user_details ud ON u.id = ud.user_id
+      LEFT JOIN vehicles v ON r.vehicle_id = v.id
+      WHERE r.id = ?
+    `;
+
+    const [rideRows] = await db.execute(rideQuery, [rideId]);
+    if (!rideRows.length) return null;
+
+    const rideData = rideRows[0];
+
+    // 2. Fetch Passenger Bookings for this ride
+    const bookingsQuery = `
+      SELECT 
+        b.id AS booking_id,
+        b.booking_code,
+        b.passenger_id,
+        u.name AS passenger_name,
+        u.phone AS passenger_phone,
+        b.seats,
+        b.ride_source AS pickup_location,
+        b.ride_destination AS dropoff_location,
+        b.total_price AS amount_paid,
+        b.status AS booking_status,
+        b.payment_status,
+        b.created_at AS booked_at
+      FROM ride_bookings b
+      INNER JOIN users u ON b.passenger_id = u.id
+      WHERE b.ride_id = ?
+      ORDER BY b.created_at ASC
+    `;
+
+    const [bookings] = await db.execute(bookingsQuery, [rideId]);
+
+    // 3. Calculate dynamic Occupancy & Total Revenue
+    const bookedSeatsCount = rideData.total_seats - rideData.available_seats;
+    const totalRevenue = bookings.reduce((sum, b) => sum + Number(b.amount_paid), 0);
+
+    // Mock Financial Breakdown (based on revenue calculations)
+    const platformFeePercentage = 0.10; // 10%
+    const gstRate = 0.05; // 5%
+    const platformFee = totalRevenue * platformFeePercentage;
+    const gstTax = totalRevenue * gstRate;
+    const driverPayout = totalRevenue - platformFee;
+
+    // 4. Construct dynamic Activity Logs using timestamps
+    const activityLogs = [
+      {
+        title: "Ride Published",
+        description: `Driver published the ride schedule.`,
+        timestamp: rideData.created_at,
+      },
+    ];
+
+    bookings.forEach((booking, idx) => {
+      activityLogs.push({
+        title: `Booking #${idx + 1} (${booking.booking_status})`,
+        description: `${booking.passenger_name} booked ${booking.seats} seat(s).`,
+        timestamp: booking.booked_at,
+      });
+    });
+
+    if (rideData.ride_status === 'ongoing' || rideData.ride_status === 'completed') {
+      activityLogs.push({
+        title: "Ride Started",
+        description: `Driver started the trip from ${rideData.source_address}.`,
+        timestamp: `${rideData.ride_date} ${rideData.departure_time}`,
+      });
+    }
+
+    if (rideData.ride_status === 'completed') {
+      activityLogs.push({
+        title: "Ride Completed",
+        description: `Driver ended trip. Final payout queued.`,
+        timestamp: rideData.updated_at,
+      });
+    }
+
+    // Format metrics into screen layout contract
+    return {
+      header: {
+        ride_code: `#RIDE-${rideData.ride_id}`,
+        status: rideData.ride_status,
+        created_at: rideData.created_at,
+      },
+      route_schedule: {
+        pickup: {
+          location: rideData.source_address,
+          scheduled_at: `${rideData.ride_date} ${rideData.departure_time}`,
+        },
+        dropoff: {
+          location: rideData.destination_address,
+          estimated_arrival: rideData.estimated_reach_time || 'N/A',
+        },
+        metrics: {
+          distance_km: rideData.distance_meters ? (rideData.distance_meters / 1000).toFixed(1) + ' km' : 'N/A',
+          duration_mins: rideData.duration_seconds ? Math.round(rideData.duration_seconds / 60) + ' mins' : 'N/A',
+          seat_price: Number(rideData.price_per_seat),
+          occupancy: `${bookedSeatsCount} / ${rideData.total_seats} seats`,
+        },
+      },
+      driver_vehicle: {
+        driver: {
+          id: rideData.driver_id,
+          name: rideData.driver_name,
+          phone: rideData.driver_phone,
+          email: rideData.driver_email,
+          profile_picture: rideData.driver_profile_picture,
+          rating: 4.85, // Mock rating or join reviews table
+          total_rides: 142, // Mock count or join count
+        },
+        vehicle: {
+          id: rideData.vehicle_id,
+          title: `${rideData.vehicle_brand} ${rideData.vehicle_model} (${rideData.vehicle_color})`,
+          type: rideData.vehicle_type,
+          registration_number: rideData.vehicle_registration_number,
+        },
+      },
+      passenger_bookings: bookings.map((b) => ({
+        booking_id: b.booking_id,
+        passenger_name: b.passenger_name,
+        passenger_phone: b.passenger_phone,
+        seats: b.seats,
+        pickup_location: b.pickup_location,
+        dropoff_location: b.dropoff_location,
+        amount_paid: Number(b.amount_paid),
+        booking_status: b.booking_status,
+        payment_status: b.payment_status,
+      })),
+      financial_breakup: {
+        total_revenue: totalRevenue,
+        platform_fee: platformFee,
+        driver_payout: driverPayout,
+        gst_tax: gstTax,
+      },
+      activity_logs: activityLogs,
+    };
+  }
 }
 
 module.exports = RideManagement;

@@ -221,3 +221,37 @@ exports.getPassengerRides = async (req, res) => {
     });
   }
 };
+
+exports.getFullRideDetails = async (req, res) => {
+  try {
+    const { rideId } = req.params;
+    if (!rideId) {
+      return res.status(400).json({
+        success: false,
+        message: "Ride ID is required",
+      });
+    }
+
+    const data = await RideManagement.getFullRideDetailsById(rideId);
+
+    if (!data) {
+      return res.status(404).json({
+        success: false,
+        message: "Ride details not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Ride details fetched successfully",
+      data,
+    });
+  } catch (error) {
+    console.error("Error fetching ride details:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error while fetching ride details",
+      error: error.message,
+    });
+  }
+};
