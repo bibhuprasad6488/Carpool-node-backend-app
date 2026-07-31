@@ -17,6 +17,43 @@ class Conversation {
 
         return rows[0] || null;
     }
+
+    static async create({
+        booking_id,
+        ride_id,
+        driver_id,
+        passenger_id }) {
+        const connection = await db.getConnection();
+
+        try {
+            await connection.beginTransaction();
+            const [result] = await connection.execute(
+                `INSERT INTO conversations
+                (
+                    booking_id, ride_id, driver_id, passenger_id, created_at, updated_at
+                )
+                VALUES
+                (
+                    ?, ?, ?, ?, NOW(), NOW()
+                )`,
+                [
+                    booking_id,
+                    ride_id,
+                    driver_id,
+                    passenger_id
+                ],
+            );
+
+            await connection.commit();
+            return result.insertId;
+
+        } catch (err) {
+            await connection.rollback();
+            throw error;
+        } finally {
+            connection.release();
+        }
+    }
 }
 
 module.exports = Conversation;

@@ -3,6 +3,9 @@ const Razorpay = require("razorpay");
 const { getIO } = require("../../socket");
 const Booking = require("../models/Booking");
 const Ride = require("../models/Ride");
+const Conversation = require("../models/Conversation");
+const logger = require("../config/logger");
+const User = require("../models/User");
 const validatePaymentVerification = require("razorpay/dist/utils/razorpay-utils").validatePaymentVerification;
 
 
@@ -440,24 +443,30 @@ exports.paymentSuccess = async (req, res) => {
 
         await connection.commit();
 
+        try {
+            const conversation = await Conversation.findByBookingId(booking_id);
+
+            if (!conversation) {
+                await Conversation.create({
+                    booking_id,
+                    ride_id: ride.id,
+                    driver_id: ride.driver_id,
+                    passenger_id: booking.passenger_id
+                });
+            }
+        } catch (err) {
+            logger.error("Conversation creation failed:", err.message);
+        }
+
         // 4. Fetch Details
-        const [userRows] = await connection.query(
-            `SELECT u.id, u.name, u.email, u.phone, u.role,
-                ud.city, ud.state, ud.country, ud.postal_code, ud.address,
-                ud.bank_account_holder, ud.bank_account_number, ud.bank_account_ifsc, ud.bank_name,
-                ud.driver_license, ud.adhhar_card, ud.pan_card, ud.bank_account, ud.profile_picture
-        FROM users u
-        LEFT JOIN user_details ud ON ud.user_id = u.id
-        WHERE u.id = ?`,
-            [ride.driver_id],
-        );
+        const userData = await User.getUserWithDetails(ride.driver_id);
 
         return res.json({
             status: "success",
             message: "Payment successful",
             bookingDetails: await Booking.getBookingDetails(booking_id),
             rideDetails: await Ride.rideDetailsById(ride.id),
-            userDetails: userRows[0]
+            userDetails: userData
         });
 
     } catch (err) {
