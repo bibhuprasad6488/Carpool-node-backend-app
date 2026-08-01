@@ -441,6 +441,7 @@ LEFT JOIN vehicles v
       },
       passenger_bookings: bookings.map((b) => ({
         booking_id: b.booking_id,
+        booking_code: b.booking_code,
         passenger_name: b.passenger_name,
         passenger_phone: b.passenger_phone,
         seats: b.seats,

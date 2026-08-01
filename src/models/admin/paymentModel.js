@@ -29,7 +29,7 @@ const PaymentModel = {
 
     const dataQuery = `
       SELECT 
-        id, booking_code, booking_id, order_id, payment_id, 
+        id, booking_code, booking_id, order_id, payment_id, amount,
         refund_id, refunded_at, payment_status, payment_gateway, 
         created_at, updated_at
       FROM payments
@@ -61,7 +61,7 @@ const PaymentModel = {
   async findById(id) {
     const query = `
       SELECT 
-        id, booking_code, booking_id, order_id, payment_id, 
+        id, booking_code, booking_id, order_id, payment_id, amount,
         refund_id, refunded_at, payment_status, payment_gateway, 
         created_at, updated_at
       FROM payments 
@@ -162,6 +162,46 @@ const PaymentModel = {
         totalPages: Math.ceil(total / limit),
       },
     };
+  },
+
+  async findByPaymentId(payment_id) {
+    const [rows] = await db.query(
+      `SELECT * FROM payments WHERE payment_id = ?`,
+      [payment_id],
+    );
+    return rows[0] || null;
+  },
+
+  // Get total processed/requested refund sum for a given booking_id
+  async getRefundedSumByBookingId(booking_id) {
+    const [rows] = await db.query(
+      `SELECT SUM(refund_amount) AS total_refunded 
+       FROM refunds 
+       WHERE booking_id = ? AND status != 'failed'`,
+      [booking_id],
+    );
+    return parseFloat(rows[0]?.total_refunded || 0);
+  },
+
+  async createRefundRecord({
+    booking_id,
+    refund_amount,
+    reason_of_refund,
+    status = "requested",
+  }) {
+    const [result] = await db.query(
+      `INSERT INTO refunds (booking_id, refund_amount, reason_of_refund, status, created_at, updated_at) 
+       VALUES (?, ?, ?, ?, NOW(), NOW())`,
+      [booking_id, refund_amount, reason_of_refund, status],
+    );
+    return result.insertId;
+  },
+
+  async updateRefundRecord(refund_table_id, { refund_id, status }) {
+    await db.query(
+      `UPDATE refunds SET refund_id = ?, status = ?, updated_at = NOW() WHERE id = ?`,
+      [refund_id, status, refund_table_id],
+    );
   },
 };
 
