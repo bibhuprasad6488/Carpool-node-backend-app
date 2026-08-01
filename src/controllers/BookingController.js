@@ -3,6 +3,9 @@ const Razorpay = require("razorpay");
 const { getIO } = require("../../socket");
 const Booking = require("../models/Booking");
 const Ride = require("../models/Ride");
+const Conversation = require("../models/Conversation");
+const logger = require("../config/logger");
+const User = require("../models/User");
 const validatePaymentVerification = require("razorpay/dist/utils/razorpay-utils").validatePaymentVerification;
 
 
@@ -41,11 +44,12 @@ exports.store = async (req, res) => {
             [ride_id]
         );
 
-        const ride = rides[0];
 
         // Check seats
         // Create booking
+
         await connection.commit();
+
         if (rides.length === 0) {
             await connection.rollback();
             return res.status(404).json({
@@ -53,6 +57,7 @@ exports.store = async (req, res) => {
                 message: "Ride not found."
             });
         }
+
 
         // Prevent self booking
         if (ride.driver_id == req.user.id) {
@@ -78,7 +83,6 @@ exports.store = async (req, res) => {
         }
 
         // Duplicate booking check (optional)
-
 
         const [bookingExists] = await connection.query(
             `SELECT id
@@ -148,7 +152,6 @@ exports.store = async (req, res) => {
         });
 
         // Save Payment
-
         await connection.query(
             `INSERT INTO payments
             (
@@ -168,11 +171,58 @@ exports.store = async (req, res) => {
             ]
         );
 
+
+        // Deduct Seats
+        await connection.query(
+            `UPDATE rides
+            SET available_seats = available_seats - ?,
+                updated_at = NOW()
+            WHERE id=?`,
+            [
+                seats,
+                ride_id
+            ]
+        );
+
         await connection.commit();
 
+        const [updatedRide] = await connection.query(
+            "SELECT id, available_seats FROM rides WHERE id=?",
+            [ride.id]
+        );
+
+        // console.log("========== SOCKET TEST ==========");
+        // console.log("Ride ID:", ride.id);
+        // console.log("Room:", `ride-${ride.id}`);
+        // console.log("Updated Ride:", updatedRide[0]);
+
+
+        // Socket.IO Broadcast
+        const io = getIO();
+
+        io.to(`ride-${ride.id}`).emit("ride-seat-updated", updatedRide[0]);
+
+        const [rows] = await connection.query(
+            `SELECT created_at
+                FROM ride_bookings
+                WHERE id = ?`,
+            [bookingId]
+        );
+
+        const createdAt = new Date(rows[0].created_at);
+        const expiryTime = new Date(createdAt.getTime() + 5 * 60 * 1000);
+
+        const formattedExpiryTime = expiryTime
+            .toISOString()
+            .slice(0, 19)
+            .replace("T", " ");
+
+        // console.log(formattedExpiryTime);
         return res.json({
             status: "success",
             booking_id: bookingId,
+            creationTime: createdAt,
+            ExpiryTime: expiryTime,
             order_id: order.id,
             amount: totalPrice,
             razorpay_key: process.env.RAZORPAY_KEY
@@ -250,6 +300,18 @@ exports.paymentSuccess = async (req, res) => {
 
         }
 
+        // Already cancelled
+        if (booking.payment_status === "failed") {
+
+            await connection.rollback();
+
+            return res.json({
+                status: "error",
+                message: "Payment already failed and booking cancelled."
+            });
+
+        }
+
         const [payments] = await connection.query(
             `SELECT * FROM payments WHERE booking_id = ? FOR UPDATE`,
             [booking_id]
@@ -300,12 +362,12 @@ exports.paymentSuccess = async (req, res) => {
                 message: e.message || "Invalid payment signature."
             });
         }
+
         // Lock Ride
         const [rides] = await connection.query(
             `SELECT *
             FROM rides
-            WHERE id=?
-            FOR UPDATE`,
+            WHERE id=?`,
             [booking.ride_id]
         );
 
@@ -322,29 +384,17 @@ exports.paymentSuccess = async (req, res) => {
 
         const ride = rides[0];
 
-        // Recheck Seat Availability
-        if (ride.available_seats < booking.seats) {
+        // // Recheck Seat Availability
+        // if (ride.available_seats < booking.seats) {
 
-            await connection.rollback();
+        //     await connection.rollback();
 
-            return res.status(400).json({
-                status: "error",
-                message: "Seats unavailable."
-            });
+        //     return res.status(400).json({
+        //         status: "error",
+        //         message: "Seats unavailable."
+        //     });
 
-        }
-
-        // Deduct Seats
-        await connection.query(
-            `UPDATE rides
-            SET available_seats = available_seats - ?,
-                updated_at = NOW()
-            WHERE id=?`,
-            [
-                booking.seats,
-                ride.id
-            ]
-        );
+        // }
 
         // Update Booking
         await connection.query(
@@ -375,41 +425,30 @@ exports.paymentSuccess = async (req, res) => {
 
         await connection.commit();
 
-        const [updatedRide] = await connection.query(
-            "SELECT id, available_seats FROM rides WHERE id=?",
-            [ride.id]
-        );
+        try {
+            const conversation = await Conversation.findByBookingId(booking_id);
 
-        console.log("========== SOCKET TEST ==========");
-        console.log("Ride ID:", ride.id);
-        console.log("Room:", `ride-${ride.id}`);
-        console.log("Updated Ride:", updatedRide[0]);
-
-
-        // Socket.IO Broadcast
-        const io = getIO();
-
-        io.to(`ride-${ride.id}`).emit("ride-seat-updated", updatedRide[0]);
-
+            if (!conversation) {
+                await Conversation.create({
+                    booking_id,
+                    ride_id: ride.id,
+                    driver_id: ride.driver_id,
+                    passenger_id: booking.passenger_id
+                });
+            }
+        } catch (err) {
+            logger.error("Conversation creation failed:", err.message);
+        }
 
         // 4. Fetch Details
-        const [userRows] = await connection.query(
-            `SELECT u.id, u.name, u.email, u.phone, u.role,
-                ud.city, ud.state, ud.country, ud.postal_code, ud.address,
-                ud.bank_account_holder, ud.bank_account_number, ud.bank_account_ifsc, ud.bank_name,
-                ud.driver_license, ud.adhhar_card, ud.pan_card, ud.bank_account, ud.profile_picture
-        FROM users u
-        LEFT JOIN user_details ud ON ud.user_id = u.id
-        WHERE u.id = ?`,
-            [ride.driver_id],
-        );
+        const userData = await User.getUserWithDetails(ride.driver_id);
 
         return res.json({
             status: "success",
             message: "Payment successful",
             bookingDetails: await Booking.getBookingDetails(booking_id),
             rideDetails: await Ride.rideDetailsById(ride.id),
-            userDetails: userRows[0]
+            userDetails: userData
         });
 
     } catch (err) {
@@ -434,8 +473,7 @@ exports.paymentFailed = async (req, res) => {
     const connection = await db.getConnection();
 
     try {
-
-        const { booking_id } = req.body;
+        const { booking_id, reason } = req.body;
 
         if (!booking_id) {
             return res.status(422).json({
@@ -446,71 +484,157 @@ exports.paymentFailed = async (req, res) => {
 
         await connection.beginTransaction();
 
-        // Lock booking
+        // Lock Booking
         const [bookings] = await connection.query(
             `SELECT *
-             FROM ride_bookings
-             WHERE id=?
-             FOR UPDATE`,
+            FROM ride_bookings
+            WHERE id = ?
+            FOR UPDATE`,
             [booking_id]
         );
 
         if (bookings.length === 0) {
-
             await connection.rollback();
 
             return res.status(404).json({
                 status: "error",
                 message: "Booking not found."
             });
-
         }
 
         const booking = bookings[0];
 
-        // Prevent changing already paid booking
+        // Already Paid
         if (booking.payment_status === "paid") {
-
             await connection.rollback();
 
             return res.status(400).json({
                 status: "error",
                 message: "Payment already completed."
             });
-
         }
+
+        // Already Cancelled
+        if (booking.status === "cancelled") {
+            await connection.rollback();
+
+            return res.status(400).json({
+                status: "error",
+                message: "Booking already cancelled."
+            });
+        }
+
+        // Lock Payment
+        const [payments] = await connection.query(
+            `SELECT *
+            FROM payments
+            WHERE booking_id = ?
+            FOR UPDATE`,
+            [booking.id]
+        );
+
+        if (payments.length === 0) {
+            await connection.rollback();
+
+            return res.status(404).json({
+                status: "error",
+                message: "Payment record not found."
+            });
+        }
+
+        // Lock Ride
+        const [rides] = await connection.query(
+            `SELECT *
+        FROM rides
+        WHERE id = ?
+        FOR UPDATE`,
+            [booking.ride_id]
+        );
+
+        if (rides.length > 0) {
+            await connection.query(
+                `UPDATE rides
+            SET available_seats = available_seats + ?,
+                updated_at = NOW()
+            WHERE id = ?`,
+                [
+                    booking.seats,
+                    booking.ride_id
+                ]
+            );
+        }
+
+        const ride = rides[0];
 
         // Update Booking
         await connection.query(
             `UPDATE ride_bookings
-             SET
-                status='cancelled',
-                payment_status='failed',
-                updated_at=NOW()
-             WHERE id=?`,
-            [booking.id]
+            SET
+            status='cancelled',
+            payment_status='failed',
+            updated_at=NOW(),
+            reason_of_cancel=?
+            WHERE id=?`,
+            [reason, booking.id]
         );
 
         // Update Payment
         await connection.query(
             `UPDATE payments
-             SET
+                SET
                 payment_status='failed',
                 updated_at=NOW()
-             WHERE booking_id=?`,
+                WHERE booking_id=?`,
             [booking.id]
         );
 
         await connection.commit();
 
+        const [updatedRide] = await connection.query(
+            "SELECT id, available_seats FROM rides WHERE id=?",
+            [booking.ride_id]
+        );
+
+        // Socket.IO Broadcast
+        const io = getIO();
+
+        io.to(`ride-${ride.id}`).emit("ride-seat-updated", updatedRide[0]);
+
+        const rideData = await Ride.rideDetailsById(booking.ride_id);
+
+        // Vehicle Details
+        const vehicleDetails = await Vehicle.getByVehicleId(rideData.vehicle_id);
+
+        if (vehicleDetails) {
+            rideData.vehicle_details = vehicleDetails;
+        }
+
+        // Driver Details
+        const user = await User.findById(rideData.driver_id);
+
+        if (user) {
+            const userDetails = await User.getUserDetailsById(user.id);
+
+            rideData.driver_details = {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                phone: user.phone,
+                user_details: userDetails,
+            };
+        }
+
         return res.json({
             status: "success",
-            message: "Payment marked as failed."
+            message: "Payment marked as failed.",
+            ride: rideFormatData(rideData)
         });
 
     } catch (err) {
 
         await connection.rollback();
+
+        console.error(err);
 
         return res.status(500).json({
             status: "error",
@@ -522,5 +646,40 @@ exports.paymentFailed = async (req, res) => {
         connection.release();
 
     }
-
 };
+
+
+// private function for format
+function rideFormatData(ride) {
+    return {
+        id: ride.id,
+        driver_id: ride.driver_id,
+        vehicle_id: ride.vehicle_id,
+        source_address: ride.source_address,
+        source_place_id: ride.source_place_id,
+        destination_address: ride.destination_address,
+        destination_place_id: ride.destination_place_id,
+        source_lat: ride.source_lat,
+        source_lng: ride.source_lng,
+        destination_lat: ride.destination_lat,
+        destination_lng: ride.destination_lng,
+        ride_date: ride.ride_date,
+        departure_time: ride.departure_time,
+        polyline: ride.polyline,
+        distance_meters: ride.distance_meters,
+        duration_seconds: ride.duration_seconds,
+        estimated_reach_time: ride.estimated_reach_time,
+        pet_allowed: ride.pet_allowed,
+        smoking_allowed: ride.smoking_allowed,
+        instant_booking: ride.instant_booking,
+        max_two_in_back: ride.max_two_in_back,
+        price_per_seat: ride.price_per_seat,
+        total_seats: ride.total_seats,
+        available_seats: ride.available_seats,
+        status: ride.status,
+        // total_price: ride.total_price,
+        vehicle_details: ride.vehicle_details,
+        driver_details: ride.driver_details,
+        // route_points: ride.route_points
+    };
+}
