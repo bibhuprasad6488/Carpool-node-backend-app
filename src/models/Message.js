@@ -8,11 +8,14 @@ class Message {
             `SELECT
                 m.*,
                 u.id AS sender_id,
+                u.role AS sender,
                 u.name AS sender_name,
-                u.profile_image
+                ud.profile_picture
             FROM messages m
             LEFT JOIN users u
                 ON u.id=m.sender_id
+            LEFT JOIN user_details ud
+                ON ud.user_id=m.sender_id
             WHERE m.conversation_id=?
             ORDER BY m.id ASC`,
             [conversationId]
@@ -28,13 +31,17 @@ class Message {
             (
                 conversation_id,
                 sender_id,
-                message
+                message,
+                created_at,
+                updated_at
             )
             VALUES
             (
                 ?,
                 ?,
-                ?
+                ?,
+                NOW(),
+                NOW()
             )`,
             [
                 data.conversation_id,
@@ -44,7 +51,15 @@ class Message {
         );
 
         const [rows] = await db.execute(
-            `SELECT * FROM messages WHERE id=?`,
+            `SELECT m.*,
+                u.id AS sender_id,
+                u.role AS sender,
+                u.name AS sender_name,
+                ud.profile_picture FROM messages m 
+                LEFT JOIN users u
+                ON u.id=m.sender_id
+                LEFT JOIN user_details ud
+                ON ud.user_id=m.sender_id WHERE m.id=?`,
             [result.insertId]
         );
 

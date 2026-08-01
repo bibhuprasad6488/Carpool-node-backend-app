@@ -22,7 +22,8 @@ exports.index = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error(error);
+        // console.error(error);
+        logger.error(error);
 
     return res.status(500).json({
       status: "error",

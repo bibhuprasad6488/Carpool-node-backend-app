@@ -13,6 +13,8 @@ exports.index = async (req, res) => {
     const users = await User.getAll();
     res.json(users);
   } catch (error) {
+    // console.error(error);
+    logger.error(error);
     res.status(500).json({
       message: error.message,
     });
@@ -31,6 +33,8 @@ exports.edit = async (req, res) => {
 
     return res.json(user);
   } catch (error) {
+    // console.error(error);
+    logger.error(error);
     return res.status(500).json({
       status: "error",
       message: error.message,
@@ -45,7 +49,8 @@ exports.getRoles = async (req, res) => {
     const roles = await Role.getAllRoles(name);
     return res.json(roles);
   } catch (err) {
-    console.error(err);
+    // console.error(err);
+    logger.error(err);
     return res.status(500).json({
       status: "error",
       message: "Unable to fetch roles",
@@ -161,6 +166,8 @@ exports.register = async (req, res) => {
     });
   } catch (err) {
     await connection.rollback();
+    // console.error(err);
+    logger.error(err);
     return res.status(500).json({ status: "error", message: err.message });
   } finally {
     connection.release();
@@ -213,6 +220,8 @@ exports.checkPhone = async (req, res) => {
       status: true,
     });
   } catch (err) {
+    // console.error(err);
+    logger.error(err);
     return res.status(500).json({
       status: "error",
       message: err.message,
@@ -259,6 +268,8 @@ exports.sendOTP = async (req, res) => {
       otp,
     });
   } catch (err) {
+    // console.error(err);
+    logger.error(err);
     return res.status(500).json({
       status: "error",
       message: err.message,
@@ -339,6 +350,8 @@ exports.verifyOTP = async (req, res) => {
       token,
     });
   } catch (err) {
+    // console.error(err);
+    logger.error(err);
     return res.status(500).json({
       status: "error",
       message: err.message,
@@ -377,6 +390,8 @@ exports.passwordReset = async (req, res) => {
       message: "Password reset link/OTP sent.",
     });
   } catch (err) {
+    // console.error(err);
+    logger.error(err);
     return res.status(500).json({
       status: "error",
       message: err.message,
@@ -412,9 +427,9 @@ exports.getLoginUser = async (req, res) => {
       },
     });
   } catch (error) {
-    logger.error({
-      message: "Unable to fetch",
-    });
+    // console.error(error);
+    logger.error(error);
+
     return res.status(500).json({
       status: "success",
       message: "Unable to fetch",
