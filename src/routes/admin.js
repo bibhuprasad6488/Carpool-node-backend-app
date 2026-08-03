@@ -25,6 +25,7 @@ const {
     getAllDrivers,
     getDriverById,
     updateUserStatus,
+    getPendingDrivers,
 } = require("../controllers/admin/DriverManagement");
 const {
     getConversations,
@@ -53,7 +54,10 @@ router.get("/rides/driver/:driverId", auth, isAdmin, getDriverRides);
 router.get("/rides/passenger/:passengerId", auth, isAdmin, getPassengerRides);
 
 router.get("/drivers", auth, isAdmin, getAllDrivers);
+router.get("/drivers/pending", auth, isAdmin, getPendingDrivers);
 router.get("/drivers/:id", auth, isAdmin, getDriverById);
+router.patch('/drivers/:userId/verify-document', auth, isAdmin, adminUserController.verifyDocument);
+router.patch('/drivers/:userId/status', auth, isAdmin, adminUserController.updateDriverStatus);
 router.patch("/drivers/:id", auth, isAdmin, updateUserStatus);
 
 router.get("/vehicles", auth, isAdmin, getAllVehicles);

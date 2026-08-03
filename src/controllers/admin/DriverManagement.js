@@ -36,6 +36,31 @@ exports.getAllDrivers = async (req, res) => {
   }
 };
 
+exports.getPendingDrivers = async (req, res) => {
+  try {
+    const { page = 1, limit = 10, search = "" } = req.query;
+
+    const result = await DriverAdminModel.getPendingDrivers({
+      page: parseInt(page, 10),
+      limit: parseInt(limit, 10),
+      search,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Pending drivers fetched successfully",
+      data: result.drivers,
+      total: result.total,
+    });
+  } catch (error) {
+    console.error("Error fetching pending drivers:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal server error",
+    });
+  }
+};
+
 exports.getDriverById = async (req, res) => {
   try {
     const { id } = req.params;
