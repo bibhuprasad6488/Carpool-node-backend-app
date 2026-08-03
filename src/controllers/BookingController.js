@@ -84,7 +84,7 @@ exports.store = async (req, res) => {
             AND passenger_id=?
             AND status IN ('pending','confirmed')
             LIMIT 1`,
-      [ride.id, req.user.id],
+      [rides.id, req.user.id],
     );
 
     if (bookingExists.length > 0) {
