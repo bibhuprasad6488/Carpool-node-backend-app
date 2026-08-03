@@ -48,7 +48,7 @@ router.get("/rides", auth, isAdmin, getAllRides);
 router.get("/rides/:id", auth, isAdmin, getRideDetails);
 router.get('/rides/details/:rideId', auth, isAdmin, getFullRideDetails);
 router.post("/rides", auth, isAdmin, createRide);
-router.put("/rides/:id", auth, isAdmin, updateRide);
+router.patch("/rides/:id", auth, isAdmin, updateRide);
 router.delete("/rides/:id", auth, isAdmin, deleteRide);
 router.get("/rides/driver/:driverId", auth, isAdmin, getDriverRides);
 router.get("/rides/passenger/:passengerId", auth, isAdmin, getPassengerRides);

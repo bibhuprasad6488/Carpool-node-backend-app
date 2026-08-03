@@ -162,12 +162,21 @@ class UserManagement {
   }
 
   static async updateUserStatus(userId, status) {
-    const query = `
+    // 1. Update status in the main users table
+    const userQuery = `
       UPDATE users 
       SET status = ?, updated_at = NOW() 
       WHERE id = ?
     `;
-    const [result] = await db.execute(query, [status, userId]);
+    await db.execute(userQuery, [status, userId]);
+
+    const detailsQuery = `
+      UPDATE user_details 
+      SET status = ?, updated_at = NOW() 
+      WHERE user_id = ?
+    `;
+    const [result] = await db.execute(detailsQuery, [status, userId]);
+
     return result;
   }
 
@@ -378,8 +387,29 @@ class UserManagement {
         u.phone,
         u.status,
         u.created_at,
-        u.updated_at
+        u.updated_at,
+        ud.city,
+        ud.state,
+        ud.country,
+        ud.postal_code,
+        ud.address,
+        ud.driver_license,
+        ud.is_dl_verified,
+        ud.adhhar_card,
+        ud.is_adhhar_verified,
+        ud.pan_card,
+        ud.is_pan_verified,
+        ud.bank_account,
+        ud.is_account_verified,
+        ud.bank_account_holder,
+        ud.bank_account_number,
+        ud.bank_account_ifsc,
+        ud.bank_name,
+        ud.profile_picture,
+        ud.is_verified,
+        ud.status AS verification_status
       FROM users u
+      LEFT JOIN user_details ud ON u.id = ud.user_id
       WHERE u.id = ? AND u.role = 2
     `;
 
@@ -389,14 +419,71 @@ class UserManagement {
       WHERE user_id = ?
     `;
 
+    const ridesQuery = `
+      SELECT 
+        id,
+        vehicle_id,
+        source_address,
+        destination_address,
+        source_lat,
+        source_lng,
+        destination_lat,
+        destination_lng,
+        ride_date,
+        departure_time,
+        distance_meters,
+        duration_seconds,
+        price_per_seat,
+        total_seats,
+        available_seats,
+        status,
+        created_at
+      FROM rides 
+      WHERE driver_id = ?
+    `;
+
     const [driverRows] = await db.execute(driverQuery, [driverId]);
     if (!driverRows[0]) return null;
 
     const [vehicles] = await db.execute(vehiclesQuery, [driverId]);
+    const [rides] = await db.execute(ridesQuery, [driverId]);
+
+    const driver = driverRows[0];
 
     return {
-      ...driverRows[0],
+      id: driver.id,
+      name: driver.name,
+      email: driver.email,
+      phone: driver.phone,
+      status: driver.status,
+      created_at: driver.created_at,
+      updated_at: driver.updated_at,
+      address_details: {
+        city: driver.city,
+        state: driver.state,
+        country: driver.country,
+        postal_code: driver.postal_code,
+        address: driver.address,
+      },
+      documents: {
+        driver_license: driver.driver_license,
+        is_dl_verified: driver.is_dl_verified,
+        adhhar_card: driver.adhhar_card,
+        is_adhhar_verified: driver.is_adhhar_verified,
+        pan_card: driver.pan_card,
+        is_pan_verified: driver.is_pan_verified,
+        bank_account: driver.bank_account,
+        is_account_verified: driver.is_account_verified,
+        bank_account_holder: driver.bank_account_holder,
+        bank_account_number: driver.bank_account_number,
+        bank_account_ifsc: driver.bank_account_ifsc,
+        bank_name: driver.bank_name,
+        profile_picture: driver.profile_picture,
+        is_verified: driver.is_verified,
+        status: driver.verification_status,
+      },
       vehicles,
+      rides,
     };
   }
 

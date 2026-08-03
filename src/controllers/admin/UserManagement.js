@@ -271,8 +271,8 @@ exports.updateDriverStatus = async (req, res) => {
         isVerified: "1",
       });
 
-      await UserManagement.updateUserStatus(userId, "active");
-      
+      await UserManagement.updateUserStatus(userId, status);
+
       return res.status(200).json({
         success: true,
         message: "Driver approved and activated successfully.",
@@ -284,6 +284,7 @@ exports.updateDriverStatus = async (req, res) => {
         status: "rejected",
         isVerified: "0",
       });
+      await UserManagement.updateUserStatus(userId, status);
 
       return res.status(200).json({
         success: true,
