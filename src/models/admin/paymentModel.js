@@ -27,18 +27,28 @@ const PaymentModel = {
     const whereSQL =
       whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
 
+    // 1. Paginated Data Query
     const dataQuery = `
-      SELECT 
-        id, booking_code, booking_id, order_id, payment_id, amount,
-        refund_id, refunded_at, payment_status, payment_gateway, 
-        created_at, updated_at
-      FROM payments
-      ${whereSQL}
-      ORDER BY id DESC
-      LIMIT ? OFFSET ?
-    `;
+    SELECT 
+      id, booking_code, booking_id, order_id, payment_id, amount,
+      refund_id, refunded_at, payment_status, payment_gateway, 
+      created_at, updated_at
+    FROM payments
+    ${whereSQL}
+    ORDER BY id DESC
+    LIMIT ? OFFSET ?
+  `;
 
+    // 2. Count Query
     const countQuery = `SELECT COUNT(*) AS total FROM payments ${whereSQL}`;
+
+    // 3. Stats Aggregation Query (Sums up all 'paid' transactions, respecting active filters)
+    const statsQuery = `
+    SELECT 
+      COALESCE(SUM(CASE WHEN payment_status = 'paid' THEN amount ELSE 0 END), 0) AS total_gross
+    FROM payments
+    ${whereSQL}
+  `;
 
     const [rows] = await db.query(dataQuery, [
       ...params,
@@ -46,6 +56,11 @@ const PaymentModel = {
       Number(offset),
     ]);
     const [[{ total }]] = await db.query(countQuery, params);
+    const [[{ total_gross }]] = await db.query(statsQuery, params);
+
+    const grossFare = Number(total_gross) || 0;
+    const adminRevenue = grossFare * 0.2; // 20% platform share
+    const driverPayouts = grossFare * 0.8; // 80% driver share
 
     return {
       payments: rows,
@@ -54,6 +69,13 @@ const PaymentModel = {
         page: Number(page),
         limit: Number(limit),
         totalPages: Math.ceil(total / limit),
+      },
+      stats: {
+        gross_fare: grossFare,
+        admin_revenue: adminRevenue,
+        driver_payouts: driverPayouts,
+        platform_percent: 20,
+        driver_percent: 80,
       },
     };
   },

@@ -2,6 +2,7 @@ const PaymentModel = require("../../models/admin/paymentModel");
 const razorpay = require("../../config/razorpay");
 
 const paymentController = {
+  // paymentController.js
   async getAllPayments(req, res) {
     try {
       const { page, limit, status, gateway, search } = req.query;
@@ -19,6 +20,7 @@ const paymentController = {
         message: "Payments fetched successfully",
         data: result.payments,
         pagination: result.pagination,
+        stats: result.stats, // 👈 New dynamic stats payload
       });
     } catch (error) {
       console.error("Error fetching payments:", error);

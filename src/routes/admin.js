@@ -67,7 +67,7 @@ router.get("/:id/messages", auth, isAdmin, getConversationMessages);
 
 router.get('/payments/', auth, isAdmin, paymentController.getAllPayments);
 router.get('/payments/:id', auth, isAdmin, paymentController.getPaymentById);
-router.patch('/payments/:id/', paymentController.updatePaymentStatus);
+router.patch('/payments/:id/', auth, isAdmin, paymentController.updatePaymentStatus);
 router.get('/payments/passenger/:passengerId', auth, isAdmin, paymentController.getPassengerTransactions);
 router.post("/payments/:id/refund", auth, isAdmin, paymentController.processRefund);
 router.post("/webhooks/razorpay", paymentController.handleWebhook);
