@@ -20,6 +20,7 @@ exports.store = async (req, res) => {
     const { ride_id, seats } = req.body;
     // Validation
     if (!ride_id) {
+      connection.release();
       return res.status(422).json({
         status: "error",
         message: "Ride is required.",
@@ -27,6 +28,7 @@ exports.store = async (req, res) => {
     }
 
     if (!seats || seats <= 0) {
+      connection.release();
       return res.status(422).json({
         status: "error",
         message: "Seats are required.",
@@ -42,22 +44,21 @@ exports.store = async (req, res) => {
       [ride_id],
     );
 
-    // Check seats
-    // Create booking
-
-    await connection.commit();
-
     if (rides.length === 0) {
       await connection.rollback();
+      connection.release();
       return res.status(404).json({
         status: "error",
         message: "Ride not found.",
       });
     }
 
+    const ride = rides[0];
+
     // Prevent self booking
-    if (rides.driver_id == req.user.id) {
+    if (ride.driver_id == req.user.id) {
       await connection.rollback();
+      connection.release();
       return res.status(400).json({
         status: "error",
         message: "Driver cannot book own ride",
@@ -65,10 +66,9 @@ exports.store = async (req, res) => {
     }
 
     // Seat check
-
-    if (rides.available_seats < seats) {
+    if (ride.available_seats < seats) {
       await connection.rollback();
-
+      connection.release();
       return res.status(400).json({
         status: "error",
         message: "Seats not available",
@@ -76,7 +76,6 @@ exports.store = async (req, res) => {
     }
 
     // Duplicate booking check (optional)
-
     const [bookingExists] = await connection.query(
       `SELECT id
             FROM ride_bookings
@@ -84,12 +83,12 @@ exports.store = async (req, res) => {
             AND passenger_id=?
             AND status IN ('pending','confirmed')
             LIMIT 1`,
-      [rides.id, req.user.id],
+      [ride.id, req.user.id],
     );
 
     if (bookingExists.length > 0) {
       await connection.rollback();
-
+      connection.release();
       return res.status(400).json({
         status: "error",
         message: "You have a Booking already exists for the ride.",
@@ -100,7 +99,6 @@ exports.store = async (req, res) => {
     const totalPrice = Number(ride.price_per_seat) * Number(seats);
 
     // Create Booking
-
     const [booking] = await connection.query(
       `INSERT INTO ride_bookings
             (
@@ -175,14 +173,8 @@ exports.store = async (req, res) => {
       [ride.id],
     );
 
-    // console.log("========== SOCKET TEST ==========");
-    // console.log("Ride ID:", ride.id);
-    // console.log("Room:", `ride-${ride.id}`);
-    // console.log("Updated Ride:", updatedRide[0]);
-
     // Socket.IO Broadcast
     const io = getIO();
-
     io.to(`ride-${ride.id}`).emit("ride-seat-updated", updatedRide[0]);
 
     const [rows] = await connection.query(
@@ -195,12 +187,7 @@ exports.store = async (req, res) => {
     const createdAt = new Date(rows[0].created_at);
     const expiryTime = new Date(createdAt.getTime() + 5 * 60 * 1000);
 
-    const formattedExpiryTime = expiryTime
-      .toISOString()
-      .slice(0, 19)
-      .replace("T", " ");
-
-    // console.log(formattedExpiryTime);
+    connection.release();
     return res.json({
       status: "success",
       booking_id: bookingId,
@@ -212,14 +199,12 @@ exports.store = async (req, res) => {
     });
   } catch (err) {
     await connection.rollback();
-    // console.error(err);
+    connection.release();
     logger.error(err);
     return res.status(500).json({
       status: "error",
       message: err.message,
     });
-  } finally {
-    connection.release();
   }
 };
 
