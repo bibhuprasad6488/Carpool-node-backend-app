@@ -2,11 +2,9 @@ const PaymentModel = require("../../models/admin/paymentModel");
 const razorpay = require("../../config/razorpay");
 
 const paymentController = {
-  // paymentController.js
   async getAllPayments(req, res) {
     try {
       const { page, limit, status, gateway, search } = req.query;
-
       const result = await PaymentModel.findAll({
         page: page ? parseInt(page, 10) : 1,
         limit: limit ? parseInt(limit, 10) : 10,
@@ -20,7 +18,7 @@ const paymentController = {
         message: "Payments fetched successfully",
         data: result.payments,
         pagination: result.pagination,
-        stats: result.stats, // 👈 New dynamic stats payload
+        stats: result.stats,
       });
     } catch (error) {
       console.error("Error fetching payments:", error);
@@ -57,38 +55,6 @@ const paymentController = {
     }
   },
 
-  async updatePaymentStatus(req, res) {
-    try {
-      const { id } = req.params;
-      const { payment_status, refund_id, refunded_at } = req.body;
-
-      const updated = await PaymentModel.updateStatus(id, {
-        payment_status,
-        refund_id,
-        refunded_at,
-      });
-
-      if (!updated) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Failed to update payment record or no valid fields provided",
-        });
-      }
-
-      return res.status(200).json({
-        success: true,
-        message: "Payment updated successfully",
-      });
-    } catch (error) {
-      console.error("Error updating payment status:", error);
-      return res.status(500).json({
-        success: false,
-        message: "Internal server error",
-      });
-    }
-  },
-
   async getPassengerTransactions(req, res) {
     try {
       const { passengerId } = req.params;
@@ -115,6 +81,64 @@ const paymentController = {
       });
     } catch (error) {
       console.error("Error fetching passenger transactions:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Internal server error",
+      });
+    }
+  },
+
+  async getRefundRequests(req, res) {
+    try {
+      const { page = 1, limit = 10, status, search } = req.query;
+
+      const result = await PaymentModel.getRefundRequests({
+        page: Number(page),
+        limit: Number(limit),
+        status,
+        search,
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: "Refund requests retrieved successfully",
+        data: result.data,
+        pagination: result.pagination,
+      });
+    } catch (error) {
+      console.error("Error fetching refund requests:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to retrieve refund requests",
+      });
+    }
+  },
+
+  async updatePaymentStatus(req, res) {
+    try {
+      const { id } = req.params;
+      const { payment_status, refund_id, refunded_at } = req.body;
+
+      const updated = await PaymentModel.updateStatus(id, {
+        payment_status,
+        refund_id,
+        refunded_at,
+      });
+
+      if (!updated) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Failed to update payment record or no valid fields provided",
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: "Payment updated successfully",
+      });
+    } catch (error) {
+      console.error("Error updating payment status:", error);
       return res.status(500).json({
         success: false,
         message: "Internal server error",

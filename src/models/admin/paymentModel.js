@@ -6,47 +6,78 @@ const PaymentModel = {
     const params = [];
     let whereClauses = [];
 
+    // Prefix table aliases to prevent ambiguous column reference errors
     if (status) {
-      whereClauses.push("payment_status = ?");
+      whereClauses.push("p.payment_status = ?");
       params.push(status);
     }
 
     if (gateway) {
-      whereClauses.push("payment_gateway = ?");
+      whereClauses.push("p.payment_gateway = ?");
       params.push(gateway);
     }
 
     if (search) {
       whereClauses.push(
-        "(booking_code LIKE ? OR booking_id LIKE ? OR order_id LIKE ? OR payment_id LIKE ?)",
+        "(p.booking_code LIKE ? OR p.booking_id LIKE ? OR p.order_id LIKE ? OR p.payment_id LIKE ? OR rb.ride_source LIKE ? OR rb.ride_destination LIKE ?)",
       );
       const searchTerm = `%${search}%`;
-      params.push(searchTerm, searchTerm, searchTerm, searchTerm);
+      params.push(
+        searchTerm,
+        searchTerm,
+        searchTerm,
+        searchTerm,
+        searchTerm,
+        searchTerm,
+      );
     }
 
     const whereSQL =
       whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
 
-    // 1. Paginated Data Query
+    // 1. Paginated Data Query with LEFT JOIN to ride_bookings
     const dataQuery = `
     SELECT 
-      id, booking_code, booking_id, order_id, payment_id, amount,
-      refund_id, refunded_at, payment_status, payment_gateway, 
-      created_at, updated_at
-    FROM payments
+      p.id, 
+      p.booking_code, 
+      p.booking_id, 
+      p.order_id, 
+      p.payment_id, 
+      p.amount,
+      p.refund_id, 
+      p.refunded_at, 
+      p.payment_status, 
+      p.payment_gateway, 
+      p.created_at, 
+      p.updated_at,
+      rb.ride_id,
+      rb.seats AS seat_booked,
+      rb.ride_source AS source,
+      rb.ride_destination AS destination
+    FROM payments p
+    LEFT JOIN ride_bookings rb 
+      ON (p.booking_id = rb.id OR p.booking_code = rb.booking_code)
     ${whereSQL}
-    ORDER BY id DESC
+    ORDER BY p.id DESC
     LIMIT ? OFFSET ?
   `;
 
-    // 2. Count Query
-    const countQuery = `SELECT COUNT(*) AS total FROM payments ${whereSQL}`;
+    // 2. Count Query (Using table alias p)
+    const countQuery = `
+    SELECT COUNT(*) AS total 
+    FROM payments p
+    LEFT JOIN ride_bookings rb 
+      ON (p.booking_id = rb.id OR p.booking_code = rb.booking_code)
+    ${whereSQL}
+  `;
 
-    // 3. Stats Aggregation Query (Sums up all 'paid' transactions, respecting active filters)
+    // 3. Stats Aggregation Query
     const statsQuery = `
     SELECT 
-      COALESCE(SUM(CASE WHEN payment_status = 'paid' THEN amount ELSE 0 END), 0) AS total_gross
-    FROM payments
+      COALESCE(SUM(CASE WHEN p.payment_status = 'paid' THEN p.amount ELSE 0 END), 0) AS total_gross
+    FROM payments p
+    LEFT JOIN ride_bookings rb 
+      ON (p.booking_id = rb.id OR p.booking_code = rb.booking_code)
     ${whereSQL}
   `;
 
@@ -192,6 +223,80 @@ const PaymentModel = {
       [payment_id],
     );
     return rows[0] || null;
+  },
+
+  async getRefundRequests({ page = 1, limit = 10, status, search }) {
+    const offset = (page - 1) * limit;
+    const whereClauses = [];
+    const params = [];
+
+    // Filter by status ('requested', 'processing', 'processed', 'failed')
+    if (status && status.toLowerCase() !== "all") {
+      whereClauses.push("r.status = ?");
+      params.push(status.toLowerCase());
+    }
+
+    // Search by booking code or refund reason
+    if (search) {
+      whereClauses.push(
+        "(b.booking_code LIKE ? OR r.reason_of_refund LIKE ? OR r.refund_id LIKE ?)",
+      );
+      const searchPattern = `%${search}%`;
+      params.push(searchPattern, searchPattern, searchPattern);
+    }
+
+    const whereSql =
+      whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
+
+    // Query total records for pagination
+    const countQuery = `
+    SELECT COUNT(*) AS total 
+    FROM refunds r
+    LEFT JOIN ride_bookings b ON r.booking_id = b.id
+    ${whereSql}
+  `;
+    const [countRows] = await db.query(countQuery, params);
+    const totalRecords = countRows[0]?.total || 0;
+
+    // Query refund records with joined payment details
+    const dataQuery = `
+    SELECT 
+      r.id AS refund_table_id,
+      r.booking_id,
+      r.refund_amount,
+      r.reason_of_refund,
+      r.status AS refund_status,
+      r.refund_id AS razorpay_refund_id,
+      r.created_at AS requested_at,
+      r.updated_at,
+      b.booking_code,
+      p.id AS payment_db_id,
+      p.payment_id AS razorpay_payment_id,
+      p.amount AS original_payment_amount,
+      p.payment_status
+    FROM refunds r
+    LEFT JOIN ride_bookings b ON r.booking_id = b.id
+    LEFT JOIN payments p ON p.booking_id = r.booking_id
+    ${whereSql}
+    ORDER BY r.created_at DESC
+    LIMIT ? OFFSET ?
+  `;
+
+    const [rows] = await db.query(dataQuery, [
+      ...params,
+      Number(limit),
+      Number(offset),
+    ]);
+
+    return {
+      data: rows,
+      pagination: {
+        totalRecords,
+        totalPages: Math.ceil(totalRecords / limit),
+        currentPage: Number(page),
+        limit: Number(limit),
+      },
+    };
   },
 
   // Get total processed/requested refund sum for a given booking_id
