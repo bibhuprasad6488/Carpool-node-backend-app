@@ -6,6 +6,7 @@ const db = require("../config/db");
 const Ride = require("../models/Ride");
 const Vehicle = require("../models/Vehicle");
 const User = require("../models/User");
+const logger = require("../config/logger");
 
 exports.conversation = async (req, res) => {
     try {
@@ -56,11 +57,12 @@ exports.conversation = async (req, res) => {
         });
 
     } catch (err) {
-        console.error(err);
+        // console.error(err);
+        logger.error(err);
 
         return res.status(500).json({
             status: "error",
-            message: err.message
+            message: err
         });
     }
 };
@@ -90,17 +92,38 @@ exports.messages = async (req, res) => {
 
         const messages = await Message.getMessages(conversationId);
 
+        const response = messages.map(function (m) {
+            const createdAt = new Date(m.created_at);
+
+            m.date = createdAt.toLocaleDateString("en-GB", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+            }); // 01 Aug 2026
+
+            m.time = createdAt.toLocaleTimeString("en-US", {
+                hour: "numeric",
+                minute: "2-digit",
+                hour12: true,
+            }); // 2:35 PM
+
+            m.sender = m.sender == 2 ? "driver" : "passenger";
+            delete m.created_at;
+            return m;
+        })
+
         return res.json({
             status: "success",
-            data: messages
+            data: response
         });
 
     } catch (err) {
-        console.error(err);
+        // console.error(err);
+        logger.error(err);
 
         return res.status(500).json({
             status: "error",
-            message: err.message
+            message: err
         });
     }
 };
@@ -132,6 +155,24 @@ exports.send = async (req, res) => {
             message
         });
 
+        newMessage.sender = newMessage.sender == 2 ? "driver" : "passenger";
+        const createdAt = new Date(newMessage.created_at);
+
+        newMessage.date = createdAt.toLocaleDateString("en-GB", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+        }); // 01 Aug 2026
+
+        newMessage.time = createdAt.toLocaleTimeString("en-US", {
+            hour: "numeric",
+            minute: "2-digit",
+            hour12: true,
+        }); // 2:35 PM
+
+        // Remove the original datetime field
+        delete newMessage.created_at;
+
         // Broadcast to authorized room only
         const io = getIO();
         io.to(`conversation_${conversation_id}`).emit("message_received", newMessage);
@@ -141,7 +182,8 @@ exports.send = async (req, res) => {
             data: newMessage
         });
     } catch (err) {
-        console.error(err);
-        return res.status(500).json({ status: "error", message: err.message });
+        // console.error(err);
+        logger.error(err);
+        return res.status(500).json({ status: "error", message: err });
     }
 };

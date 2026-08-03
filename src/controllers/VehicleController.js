@@ -1,4 +1,5 @@
 const db = require("../config/db");
+const logger = require("../config/logger");
 const Vehicle = require("../models/Vehicle");
 
 const formatUrl = (filePath) => {
@@ -22,6 +23,8 @@ exports.index = async (req, res) => {
 
         return res.json(response);
     } catch (err) {
+        // console.error(err);
+        logger.error(err);
         return res.status(500).json({
             status: "error",
             message: err.message
@@ -53,6 +56,8 @@ exports.allVehicleLists = async (req, res) => {
 
         return res.json(response);
     } catch (err) {
+        // console.error(err);
+        logger.error(err);
         return res.status(500).json({
             status: "error",
             message: err.message
@@ -61,79 +66,81 @@ exports.allVehicleLists = async (req, res) => {
 };
 
 exports.store = async (req, res) => {
-  try {
-    const {
-      brand,
-      model,
-      manufacture_year,
-      registration_number,
-      color,
-      seats,
-      available_seats,
-      fuel_type,
-      rc_number,
-      rc_expiry_date,
-      insurance_provider,
-      policy_number,
-      insurance_expiry,
-      vehicle_type
-    } = req.body;
+    try {
+        const {
+            brand,
+            model,
+            manufacture_year,
+            registration_number,
+            color,
+            seats,
+            available_seats,
+            fuel_type,
+            rc_number,
+            rc_expiry_date,
+            insurance_provider,
+            policy_number,
+            insurance_expiry,
+            vehicle_type
+        } = req.body;
 
-    const user_id = req.user.id;
+        const user_id = req.user.id;
 
-    // Custom Validations
-    if (!brand) return res.status(422).json({ status: "error", message: "Brand is required" });
-    if (!model) return res.status(422).json({ status: "error", message: "Model is required" });
-    if (!manufacture_year) return res.status(422).json({ status: "error", message: "Manufacture year is required" });
-    if (!registration_number) return res.status(422).json({ status: "error", message: "Registration number is required" });
-    if (!color) return res.status(422).json({ status: "error", message: "Color is required" });
-    if (!seats) return res.status(422).json({ status: "error", message: "Seats are required" });
-    if (!fuel_type) return res.status(422).json({ status: "error", message: "Fuel type is required" });
-    if (!rc_number) return res.status(422).json({ status: "error", message: "RC Number is required" });
+        // Custom Validations
+        if (!brand) return res.status(422).json({ status: "error", message: "Brand is required" });
+        if (!model) return res.status(422).json({ status: "error", message: "Model is required" });
+        if (!manufacture_year) return res.status(422).json({ status: "error", message: "Manufacture year is required" });
+        if (!registration_number) return res.status(422).json({ status: "error", message: "Registration number is required" });
+        if (!color) return res.status(422).json({ status: "error", message: "Color is required" });
+        if (!seats) return res.status(422).json({ status: "error", message: "Seats are required" });
+        if (!fuel_type) return res.status(422).json({ status: "error", message: "Fuel type is required" });
+        if (!rc_number) return res.status(422).json({ status: "error", message: "RC Number is required" });
 
-    // Extract Cloudinary HTTPS URLs directly using .path
-    const rc_file = req.files?.rc_file?.[0]?.path || null;
-    const insurance_file = req.files?.insurance_file?.[0]?.path || null;
-    const front_image = req.files?.front_image?.[0]?.path || null;
-    const back_image = req.files?.back_image?.[0]?.path || null;
-    const side_image = req.files?.side_image?.[0]?.path || null;
-    const number_plate_image = req.files?.number_plate_image?.[0]?.path || null;
+        // Extract Cloudinary HTTPS URLs directly using .path
+        const rc_file = req.files?.rc_file?.[0]?.path || null;
+        const insurance_file = req.files?.insurance_file?.[0]?.path || null;
+        const front_image = req.files?.front_image?.[0]?.path || null;
+        const back_image = req.files?.back_image?.[0]?.path || null;
+        const side_image = req.files?.side_image?.[0]?.path || null;
+        const number_plate_image = req.files?.number_plate_image?.[0]?.path || null;
 
-    const vehicleId = await Vehicle.createVehicle({
-      user_id,
-      vehicle_type,
-      brand,
-      model,
-      manufacture_year,
-      registration_number,
-      color,
-      seats,
-      available_seats,
-      fuel_type,
-      rc_number,
-      rc_expiry_date,
-      insurance_provider,
-      policy_number,
-      insurance_expiry,
-      rc_file,
-      insurance_file,
-      front_image,
-      back_image,
-      side_image,
-      number_plate_image
-    });
+        const vehicleId = await Vehicle.createVehicle({
+            user_id,
+            vehicle_type,
+            brand,
+            model,
+            manufacture_year,
+            registration_number,
+            color,
+            seats,
+            available_seats,
+            fuel_type,
+            rc_number,
+            rc_expiry_date,
+            insurance_provider,
+            policy_number,
+            insurance_expiry,
+            rc_file,
+            insurance_file,
+            front_image,
+            back_image,
+            side_image,
+            number_plate_image
+        });
 
-    return res.status(201).json({
-      status: "success",
-      message: "Vehicle added successfully.",
-      vehicle_id: vehicleId
-    });
-  } catch (err) {
-    return res.status(500).json({
-        status: "error",
-        message: err.message
-    });
-  }
+        return res.status(201).json({
+            status: "success",
+            message: "Vehicle added successfully.",
+            vehicle_id: vehicleId
+        });
+    } catch (err) {
+        // console.error(err);
+        logger.error(err);
+        return res.status(500).json({
+            status: "error",
+            message: err.message
+        });
+    }
 };
 
 exports.edit = async (req, res) => {
@@ -159,6 +166,8 @@ exports.edit = async (req, res) => {
             vehicle: formatVehicleDetails(vehicle)
         });
     } catch (err) {
+        // console.error(err);
+        logger.error(err);
         return res.status(500).json({
             status: "error",
             message: err.message
@@ -307,6 +316,8 @@ exports.update = async (req, res) => {
         });
 
     } catch (err) {
+        // console.error(err);
+        logger.error(err);
         await connection.rollback();
         return res.status(500).json({
             status: "error",

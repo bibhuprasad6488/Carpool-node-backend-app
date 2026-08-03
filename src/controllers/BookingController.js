@@ -158,16 +158,18 @@ exports.store = async (req, res) => {
                 booking_code,
                 booking_id,
                 order_id,
+                amount,
                 payment_status,
                 created_at,
                 updated_at
             )
             VALUES
-            (?,?,?,'unpaid',NOW(),NOW())`,
+            (?,?,?,?,'unpaid',NOW(),NOW())`,
             [
                 bookingCode,
                 bookingId,
-                order.id
+                order.id,
+                totalPrice
             ]
         );
 
@@ -229,6 +231,8 @@ exports.store = async (req, res) => {
         });
     } catch (err) {
         await connection.rollback();
+        // console.error(err);
+        logger.error(err);
         return res.status(500).json({
             status: "error",
             message: err.message
@@ -454,6 +458,8 @@ exports.paymentSuccess = async (req, res) => {
     } catch (err) {
 
         await connection.rollback();
+        // console.error(err);
+        logger.error(err);
 
         return res.status(500).json({
             status: "error",
@@ -633,8 +639,8 @@ exports.paymentFailed = async (req, res) => {
     } catch (err) {
 
         await connection.rollback();
-
-        console.error(err);
+        // console.error(err);
+        logger.error(err);
 
         return res.status(500).json({
             status: "error",
@@ -648,6 +654,18 @@ exports.paymentFailed = async (req, res) => {
     }
 };
 
+exports.updatePaymentsRecord = async (req,res)=>{
+    try {
+        const [bookings] = await db.query(`SELECT id, total_price FROM ride_bookings ORDER BY id DESC`);
+
+        if (bookings) {
+            console.log('book', bookings);
+            
+        }
+    } catch (error) {
+        
+    }
+}
 
 // private function for format
 function rideFormatData(ride) {
