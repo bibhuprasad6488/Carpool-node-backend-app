@@ -1,8 +1,8 @@
 // src/models/admin/Vehicle.admin.js
-const db = require('../../config/db'); // Adjust path to your database config
+const db = require("../../config/db"); // Adjust path to your database config
 
 class VehicleAdminModel {
-  static async getAllVehicles({ page = 1, limit = 10, search = '' }) {
+  static async getAllVehicles({ page = 1, limit = 10, search = "" }) {
     const offset = (page - 1) * limit;
     const searchParam = `%${search}%`;
 
@@ -34,13 +34,17 @@ class VehicleAdminModel {
       LIMIT ? OFFSET ?
     `;
 
-    const [[{ total }]] = await db.execute(countQuery, [searchParam, searchParam, searchParam]);
+    const [[{ total }]] = await db.execute(countQuery, [
+      searchParam,
+      searchParam,
+      searchParam,
+    ]);
     const [vehicles] = await db.execute(dataQuery, [
-      searchParam, 
-      searchParam, 
-      searchParam, 
-      String(limit), 
-      String(offset)
+      searchParam,
+      searchParam,
+      searchParam,
+      String(limit),
+      String(offset),
     ]);
 
     return { total, vehicles };
@@ -71,6 +75,26 @@ class VehicleAdminModel {
     return result;
   }
 
+  static async getVehiclesByUserId(userId) {
+    const query = `
+      SELECT 
+        v.id,
+        v.user_id AS driver_id,
+        v.model,
+        v.registration_number,
+        v.fuel_type,
+        v.color,
+        v.status,
+        v.created_at,
+        v.updated_at
+      FROM vehicles v
+      WHERE v.user_id = ?
+      ORDER BY v.created_at DESC
+    `;
+
+    const [rows] = await db.execute(query, [userId]);
+    return rows;
+  }
 
   static async deleteVehicle(id) {
     const query = `DELETE FROM vehicles WHERE id = ?`;

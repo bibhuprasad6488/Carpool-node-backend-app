@@ -116,10 +116,10 @@ router.post("/v1/payment-failed", auth, BookingController.paymentFailed);
 
 // Messages
 
-router.get("/v1/conversation/:bookingId", auth, ChatController.conversation);
+router.get("/conversation/:bookingId", auth, ChatController.conversation);
 
-router.get("/v1/messages/:conversationId", auth, ChatController.messages);
+router.get("/messages/:conversationId", auth, ChatController.messages);
 
-router.post("/v1/send", auth, ChatController.send);
+router.post("/send", auth, ChatController.send);
 
 module.exports = router;

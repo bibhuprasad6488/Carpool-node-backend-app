@@ -14,7 +14,6 @@ class Conversation {
             `SELECT * FROM conversations WHERE id=? LIMIT 1`,
             [id],
         );
-
         return rows[0] || null;
     }
 

@@ -34,15 +34,15 @@ exports.getUsers = async (req, res) => {
       }
 
       // Role mapping (Handles string and integer roles)
-      let roleLabel = "Rider";
+      let roleLabel = "Passenger";
       const rawRole = String(u.role).toLowerCase();
 
       if (rawRole === "1" || rawRole === "admin") {
         roleLabel = "Admin";
       } else if (rawRole === "2" || rawRole === "driver") {
         roleLabel = "Driver";
-      } else if (rawRole === "3" || rawRole === "rider") {
-        roleLabel = "Rider";
+      } else if (rawRole === "3" || rawRole === "passenger") {
+        roleLabel = "Passenger";
       } else if (u.role) {
         // Capitalize default fallback role string
         roleLabel = rawRole.charAt(0).toUpperCase() + rawRole.slice(1);
@@ -105,15 +105,15 @@ exports.getUserDetails = async (req, res) => {
     }
 
     // Role mapping fallback
-    let roleLabel = "Rider";
+    let roleLabel = "Passenger";
     const rawRole = String(user.role).toLowerCase();
 
     if (rawRole === "1" || rawRole === "admin") {
       roleLabel = "Admin";
     } else if (rawRole === "2" || rawRole === "driver") {
       roleLabel = "Driver";
-    } else if (rawRole === "3" || rawRole === "rider") {
-      roleLabel = "Rider";
+    } else if (rawRole === "3" || rawRole === "Passenger") {
+      roleLabel = "Passenger";
     } else if (user.role) {
       roleLabel = rawRole.charAt(0).toUpperCase() + rawRole.slice(1);
     }
@@ -203,12 +203,102 @@ exports.updateUserStatus = async (req, res) => {
       message: `User status successfully updated to ${status}.`,
       data: { userId: id, status },
     });
-    
   } catch (error) {
     console.error("Error updating user status:", error);
     return res.status(500).json({
       success: false,
       message: "Internal server error while updating user status.",
     });
+  }
+};
+
+exports.verifyDocument = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { docType, status } = req.body; // docType: 'license' | 'aadhar' | 'pan' | 'bank'
+
+    const validStatuses = ["pending", "approved", "rejected"];
+    if (!validStatuses.includes(status)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid status value." });
+    }
+
+    await UserManagement.updateDocumentStatus(userId, docType, status);
+
+    return res.status(200).json({
+      success: true,
+      message: `Document ${docType} updated to ${status} successfully.`,
+    });
+  } catch (error) {
+    console.error("Error updating document status:", error);
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal server error." });
+  }
+};
+
+exports.updateDriverStatus = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { status } = req.body; // status: 'active' | 'blocked' | 'rejected'
+
+    if (status === "active") {
+      const details = await UserManagement.getVerificationState(userId);
+
+      if (!details) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Driver details not found." });
+      }
+
+      const allDocsApproved =
+        details.is_dl_verified === "approved" &&
+        details.is_adhhar_verified === "approved" &&
+        details.is_pan_verified === "approved" &&
+        details.is_account_verified === "approved";
+
+      if (!allDocsApproved) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Cannot approve driver until all required documents are verified as approved.",
+        });
+      }
+
+      await UserManagement.updateDriverOverallStatus(userId, {
+        status: "active",
+        isVerified: "1",
+      });
+
+      await UserManagement.updateUserStatus(userId, status);
+
+      return res.status(200).json({
+        success: true,
+        message: "Driver approved and activated successfully.",
+      });
+    }
+
+    if (status === "blocked" || status === "rejected") {
+      await UserManagement.updateDriverOverallStatus(userId, {
+        status: "rejected",
+        isVerified: "0",
+      });
+      await UserManagement.updateUserStatus(userId, status);
+
+      return res.status(200).json({
+        success: true,
+        message: "Driver application rejected successfully.",
+      });
+    }
+
+    return res
+      .status(400)
+      .json({ success: false, message: "Invalid driver status provided." });
+  } catch (error) {
+    console.error("Error updating driver status:", error);
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal server error." });
   }
 };
