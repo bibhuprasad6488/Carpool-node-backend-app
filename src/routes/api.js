@@ -11,6 +11,7 @@ const VehicleController = require('../controllers/VehicleController');
 const BookingController = require('../controllers/BookingController');
 const RideController = require('../controllers/RideController');
 const ChatController = require('../controllers/ChatController');
+const { triggerSos } = require('../controllers/sosController');
 
 
 router.get('/v1/get-roles', UserController.getRoles)
@@ -121,5 +122,11 @@ router.get("/conversation/:bookingId", auth, ChatController.conversation);
 router.get("/messages/:conversationId", auth, ChatController.messages);
 
 router.post("/send", auth, ChatController.send);
+
+
+
+
+/// SOS
+router.post("/rides/:ride_id/sos", auth, triggerSos);
 
 module.exports = router;
