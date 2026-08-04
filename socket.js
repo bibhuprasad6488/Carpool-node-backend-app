@@ -75,6 +75,18 @@ module.exports = {
         });
       });
 
+
+      // Socket for SOS
+      socket.on("join_admin_control_room", () => {
+        socket.join("admin-control-room");
+        console.log(`Socket ${socket.id} joined admin control room`);
+      });
+
+      socket.on("leave_admin_control_room", () => {
+        socket.leave("admin-control-room");
+        console.log(`Socket ${socket.id} left admin control room`);
+      });
+
       socket.on("disconnect", () => {
         console.log(`Socket disconnected: ID ${socket.id}`);
       });

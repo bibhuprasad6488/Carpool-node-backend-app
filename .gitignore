@@ -19,3 +19,4 @@ test-socket.js
 
 src/logs
 update.js
+node_modules/*
