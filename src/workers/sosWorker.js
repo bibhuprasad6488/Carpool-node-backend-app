@@ -1,7 +1,7 @@
 // workers/sosWorker.js
 const { Worker } = require("bullmq");
 const IORedis = require("ioredis");
-const logger = require("../config/logger"); 
+const logger = require("../config/logger");
 
 const connection = new IORedis({
   host: process.env.REDIS_HOST || "localhost",
@@ -15,13 +15,17 @@ const sosWorker = new Worker(
     const { sosId, rideId, userId, driverId, latitude, longitude } = job.data;
 
     // TODO: Later when you implement Twilio, fetch user/driver numbers and send SMS here.
-    logger.info(`[BACKGROUND WORKER] Processing SOS Alert #${sosId} for Ride #${rideId}`);
-    console.log(`[SOS QUEUE] Triggered by User #${userId} for Ride #${rideId} at Lat: ${latitude}, Lng: ${longitude}`);
-    
+    logger.info(
+      `[BACKGROUND WORKER] Processing SOS Alert #${sosId} for Ride #${rideId}`,
+    );
+    console.log(
+      `[SOS QUEUE] Triggered by User #${userId} for Ride #${rideId} at Lat: ${latitude}, Lng: ${longitude}`,
+    );
+
     // Simulate async work or placeholder task success
     return { processed: true, sosId };
   },
-  { connection }
+  { connection },
 );
 
 sosWorker.on("completed", (job) => {

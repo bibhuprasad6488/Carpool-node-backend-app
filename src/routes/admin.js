@@ -33,6 +33,7 @@ const {
     createConversation,
 } = require("../controllers/admin/ChatManagement");
 const paymentController = require("../controllers/admin/paymentController");
+const { getAllSosAlerts, getSosById, updateSosStatus } = require("../controllers/sosController");
 
 router.get("/dashboard", auth, isAdmin, (req, res) => {
     res.json({ message: "Welcome to the admin panel backend!" });
@@ -76,6 +77,11 @@ router.get("/refund-requests", auth, isAdmin, paymentController.getRefundRequest
 router.patch('/payments/:id/', auth, isAdmin, paymentController.updatePaymentStatus);
 router.post("/payments/:id/refund", auth, isAdmin, paymentController.processRefund);
 router.post("/webhooks/razorpay", paymentController.handleWebhook);
+
+
+router.get('/sos', auth, isAdmin, getAllSosAlerts);
+router.get("/sos/:id", auth, isAdmin, getSosById);
+router.patch("/sos/:id/status", auth, isAdmin, updateSosStatus);
 
 router.get("/activity-logs", auth, isAdmin, getAllActivityLogs);
 
