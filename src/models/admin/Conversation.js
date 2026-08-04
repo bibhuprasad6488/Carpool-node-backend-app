@@ -52,21 +52,21 @@ class Conversation {
     return rows[0] || null;
   }
 
-  static async getBookingDetails(bookingId) {
-    const query = `
-      SELECT 
-        b.id AS booking_id,
-        b.ride_id,
-        b.passenger_id,
-        r.driver_id
-      FROM bookings b
-      JOIN rides r ON r.id = b.ride_id
-      WHERE b.id = ?
-      LIMIT 1
-    `;
-    const [rows] = await db.execute(query, [bookingId]);
-    return rows[0] || null;
-  }
+  // static async getBookingDetails(bookingId) {
+  //   const query = `
+  //     SELECT 
+  //       b.id AS booking_id,
+  //       b.ride_id,
+  //       b.passenger_id,
+  //       r.driver_id
+  //     FROM bookings b
+  //     JOIN rides r ON r.id = b.ride_id
+  //     WHERE b.id = ?
+  //     LIMIT 1
+  //   `;
+  //   const [rows] = await db.execute(query, [bookingId]);
+  //   return rows[0] || null;
+  // }
 
   static async create({ booking_id, ride_id, driver_id, passenger_id }) {
     const query = `
