@@ -187,3 +187,20 @@ exports.send = async (req, res) => {
         return res.status(500).json({ status: "error", message: err });
     }
 };
+
+exports.driverChats = async (req, res) => {
+    const driverId = req.user.id;
+    try {
+        const conversations = await Conversation.findByDriverId(driverId);
+        // console.log(conversations);
+        return res.status(200).json({ status: "success", data: conversations });
+
+    } catch (err) {
+        logger.error(err);
+
+        return res.status(500).json({
+            status: "error",
+            message: err
+        });
+    }
+};
