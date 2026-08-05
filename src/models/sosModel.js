@@ -30,6 +30,51 @@ class SosModel {
     return rows[0];
   }
 
+  static async getAll({ status, page = 1, limit = 10 }) {
+    const offset = (page - 1) * limit;
+    let query = `
+      SELECT s.*, 
+             u.name as user_name, u.phone as user_phone,
+             admin.name as resolved_by_name,
+             r.ride_date, r.departure_time, r.source_address, r.destination_address
+      FROM sos_logs s
+      JOIN users u ON s.user_id = u.id
+      JOIN rides r ON s.ride_id = r.id
+      LEFT JOIN users admin ON s.resolved_by = admin.id
+    `;
+    const queryParams = [];
+
+    if (status) {
+      query += ` WHERE s.status = ?`;
+      queryParams.push(status);
+    }
+
+    query += ` ORDER BY s.created_at DESC LIMIT ? OFFSET ?`;
+    queryParams.push(Number(limit), Number(offset));
+
+    const [rows] = await db.query(query, queryParams);
+
+    // Get total count for pagination headers/metadata
+    let countQuery = `SELECT COUNT(*) as total FROM sos_logs s`;
+    const countParams = [];
+    if (status) {
+      countQuery += ` WHERE s.status = ?`;
+      countParams.push(status);
+    }
+    const [countResult] = await db.query(countQuery, countParams);
+    const totalRecords = countResult[0].total;
+
+    return {
+      data: rows,
+      pagination: {
+        totalRecords,
+        totalPages: Math.ceil(totalRecords / limit),
+        currentPage: Number(page),
+        limit: Number(limit),
+      },
+    };
+  }
+
   static async updateStatus(sosId, status, resolvedBy, notes) {
     const query = `
       UPDATE sos_logs 

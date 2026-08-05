@@ -64,7 +64,9 @@ exports.triggerSos = async (req, res) => {
     io.to(`ride-${ride_id}`).emit("emergency-sos-triggered", alertPayload);
 
     // Queue background notifications (SMS / External Webhooks)
-    console.log(`[SOS NOTIFICATION] Processing emergency alert for SOS ID: ${sosId}`);
+    console.log(
+      `[SOS NOTIFICATION] Processing emergency alert for SOS ID: ${sosId}`,
+    );
     // await sosQueue.add("dispatch-sos-notifications", {
     //   sosId,
     //   rideId: ride_id,
@@ -86,6 +88,106 @@ exports.triggerSos = async (req, res) => {
     return res.status(500).json({
       status: "error",
       message: err.message,
+    });
+  }
+};
+
+exports.getAllSosAlerts = async (req, res) => {
+  try {
+    const { status, page, limit } = req.query;
+
+    const result = await SosModel.getAll({
+      status,
+      page: page || 1,
+      limit: limit || 10,
+    });
+
+    return res.status(200).json({
+      success: true,
+      ...result,
+    });
+  } catch (err) {
+    logger.error("Fetch SOS Alerts Error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error fetching SOS alerts.",
+    });
+  }
+};
+
+// Get single SOS alert details by ID
+exports.getSosById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const sosAlert = await SosModel.findById(id);
+
+    if (!sosAlert) {
+      return res.status(404).json({
+        success: false,
+        message: "SOS alert not found.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: sosAlert,
+    });
+  } catch (err) {
+    logger.error("Fetch SOS By ID Error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error fetching SOS details.",
+    });
+  }
+};
+
+// Update SOS status (e.g., Acknowledged or Resolved)
+exports.updateSosStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, resolution_notes } = req.body;
+    const adminId = req.user.id;
+
+    const validStatuses = ["triggered", "acknowledged", "resolved"];
+    if (!status || !validStatuses.includes(status)) {
+      return res.status(422).json({
+        success: false,
+        message:
+          "Invalid or missing status. Allowed: triggered, acknowledged, resolved.",
+      });
+    }
+
+    const sosAlert = await SosModel.findById(id);
+    if (!sosAlert) {
+      return res.status(404).json({
+        success: false,
+        message: "SOS alert not found.",
+      });
+    }
+
+    await SosModel.updateStatus(id, status, adminId, resolution_notes || null);
+
+    const io = getIO();
+    const updatePayload = {
+      sos_id: Number(id),
+      status,
+      resolved_by: adminId,
+      resolution_notes,
+      updated_at: new Date(),
+    };
+
+    io.to("admin-control-room").emit("sos-status-updated", updatePayload);
+    io.to(`ride-${sosAlert.ride_id}`).emit("sos-status-updated", updatePayload);
+
+    return res.status(200).json({
+      success: true,
+      message: `SOS alert status updated to '${status}' successfully.`,
+    });
+  } catch (err) {
+    logger.error("Update SOS Status Error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error updating SOS status.",
     });
   }
 };

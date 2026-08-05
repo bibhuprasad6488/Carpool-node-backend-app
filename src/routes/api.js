@@ -12,6 +12,7 @@ const BookingController = require('../controllers/BookingController');
 const RideController = require('../controllers/RideController');
 const ChatController = require('../controllers/ChatController');
 const { triggerSos } = require('../controllers/sosController');
+const { storeRating } = require('../controllers/ratingController');
 
 
 router.get('/get-roles', UserController.getRoles)
@@ -129,5 +130,8 @@ router.get("/driver/chats", auth, ChatController.driverChats);
 
 /// SOS
 router.post("/rides/:ride_id/sos", auth, triggerSos);
+
+// Ratings
+router.post("/ratings", auth, storeRating);
 
 module.exports = router;

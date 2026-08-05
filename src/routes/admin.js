@@ -31,8 +31,12 @@ const {
     getConversations,
     getConversationMessages,
     createConversation,
+    getAllConversations,
+    getConversationMessages2,
 } = require("../controllers/admin/ChatManagement");
 const paymentController = require("../controllers/admin/paymentController");
+const { getAllSosAlerts, getSosById, updateSosStatus } = require("../controllers/sosController");
+const { getAdminRatings, deleteRating } = require("../controllers/admin/adminRatingController");
 
 router.get("/dashboard", auth, isAdmin, (req, res) => {
     res.json({ message: "Welcome to the admin panel backend!" });
@@ -65,9 +69,9 @@ router.get("/vehicles/:id", auth, isAdmin, getVehicleById);
 router.patch("/vehicles/:id", auth, isAdmin, updateVehicleStatus);
 router.get('/vehicles/user/:userId', auth, isAdmin, getVehiclesByUser);
 
-router.get("/conversations", auth, isAdmin, getConversations);
+router.get("/conversations", auth, isAdmin, getAllConversations);
 router.post("/conversations", auth, isAdmin, createConversation);
-router.get("/:id/messages", auth, isAdmin, getConversationMessages);
+router.get("/conversations/:id/messages", auth, isAdmin, getConversationMessages2);
 
 router.get('/payments/', auth, isAdmin, paymentController.getAllPayments);
 router.get('/payments/:id', auth, isAdmin, paymentController.getPaymentById);
@@ -77,6 +81,14 @@ router.patch('/payments/:id/', auth, isAdmin, paymentController.updatePaymentSta
 router.post("/payments/:id/refund", auth, isAdmin, paymentController.processRefund);
 router.post("/webhooks/razorpay", paymentController.handleWebhook);
 
+router.get('/sos', auth, isAdmin, getAllSosAlerts);
+router.get("/sos/:id", auth, isAdmin, getSosById);
+router.patch("/sos/:id/status", auth, isAdmin, updateSosStatus);
+
 router.get("/activity-logs", auth, isAdmin, getAllActivityLogs);
+
+// Ratings
+router.get("/ratings",auth, isAdmin, getAdminRatings);
+router.delete("/ratings/:id", auth, isAdmin, deleteRating);
 
 module.exports = router;
