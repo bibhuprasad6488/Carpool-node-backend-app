@@ -31,6 +31,8 @@ const {
     getConversations,
     getConversationMessages,
     createConversation,
+    getAllConversations,
+    getConversationMessages2,
 } = require("../controllers/admin/ChatManagement");
 const paymentController = require("../controllers/admin/paymentController");
 const { getAllSosAlerts, getSosById, updateSosStatus } = require("../controllers/sosController");
@@ -67,9 +69,9 @@ router.get("/vehicles/:id", auth, isAdmin, getVehicleById);
 router.patch("/vehicles/:id", auth, isAdmin, updateVehicleStatus);
 router.get('/vehicles/user/:userId', auth, isAdmin, getVehiclesByUser);
 
-router.get("/conversations", auth, isAdmin, getConversations);
+router.get("/conversations", auth, isAdmin, getAllConversations);
 router.post("/conversations", auth, isAdmin, createConversation);
-router.get("/conversations/:id/messages", auth, isAdmin, getConversationMessages);
+router.get("/conversations/:id/messages", auth, isAdmin, getConversationMessages2);
 
 router.get('/payments/', auth, isAdmin, paymentController.getAllPayments);
 router.get('/payments/:id', auth, isAdmin, paymentController.getPaymentById);
