@@ -16,3 +16,4 @@ exports.getAllActivityLogs = async (req, res) => {
         pagination: result.pagination
     });
 };
+

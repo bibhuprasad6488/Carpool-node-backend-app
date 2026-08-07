@@ -37,7 +37,8 @@ const {
 const paymentController = require("../controllers/admin/paymentController");
 const { getAllSosAlerts, getSosById, updateSosStatus } = require("../controllers/sosController");
 const { getAdminRatings, deleteRating } = require("../controllers/admin/adminRatingController");
-const { getDashboardBootstrap } = require("../controllers/admin/adminDashboard");
+const { getDashboardBootstrap, getPlatformPerformance } = require("../controllers/admin/adminDashboard");
+const { getIO } = require("../../socket");
 
 router.get("/dashboard", auth, isAdmin, (req, res) => {
     res.json({ message: "Welcome to the admin panel backend!" });
@@ -45,7 +46,8 @@ router.get("/dashboard", auth, isAdmin, (req, res) => {
 
 router.post("/login", adminAuthController.adminLogin);
 
-router.get('/dashboard/bootstrap', auth, isAdmin, getDashboardBootstrap)
+router.get('/dashboard/bootstrap', auth, isAdmin, getDashboardBootstrap);
+router.get('/dashboard/analytics', auth, isAdmin, getPlatformPerformance);
 
 router.get("/users", auth, isAdmin, adminUserController.getUsers);
 router.get("/users/:id", auth, isAdmin, adminUserController.getUserDetails);
@@ -93,5 +95,29 @@ router.get("/activity-logs", auth, isAdmin, getAllActivityLogs);
 // Ratings
 router.get("/ratings",auth, isAdmin, getAdminRatings);
 router.delete("/ratings/:id", auth, isAdmin, deleteRating);
+
+router.post("/test-admin-notification", (req, res) => {
+  const { type, title, message, rideId, conversationId } = req.body;
+
+  const payload = {
+    type: type || "RIDE_BOOKED",
+    title: title || "Test Notification 🚗",
+    message: message || "This is a test notification sent from Postman!",
+    timestamp: new Date().toISOString(),
+    data: {
+      rideId: rideId || 101,
+      conversationId: conversationId || null,
+    },
+  };
+
+  // Broadcast to admin control room
+  getIO().to("admin-control-room").emit("admin_notification", payload);
+
+  return res.status(200).json({
+    status: "success",
+    message: "Notification emitted to admin-control-room successfully!",
+    payload,
+  });
+});
 
 module.exports = router;
