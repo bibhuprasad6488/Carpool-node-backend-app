@@ -37,12 +37,15 @@ const {
 const paymentController = require("../controllers/admin/paymentController");
 const { getAllSosAlerts, getSosById, updateSosStatus } = require("../controllers/sosController");
 const { getAdminRatings, deleteRating } = require("../controllers/admin/adminRatingController");
+const { getDashboardBootstrap } = require("../controllers/admin/adminDashboard");
 
 router.get("/dashboard", auth, isAdmin, (req, res) => {
     res.json({ message: "Welcome to the admin panel backend!" });
 });
 
 router.post("/login", adminAuthController.adminLogin);
+
+router.get('/dashboard/bootstrap', auth, isAdmin, getDashboardBootstrap)
 
 router.get("/users", auth, isAdmin, adminUserController.getUsers);
 router.get("/users/:id", auth, isAdmin, adminUserController.getUserDetails);

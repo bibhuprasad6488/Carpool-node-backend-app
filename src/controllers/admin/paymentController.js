@@ -5,6 +5,8 @@ const paymentController = {
   async getAllPayments(req, res) {
     try {
       const { page, limit, status, gateway, search } = req.query;
+
+      // if (status == "")
       const result = await PaymentModel.findAll({
         page: page ? parseInt(page, 10) : 1,
         limit: limit ? parseInt(limit, 10) : 10,
@@ -169,7 +171,7 @@ const paymentController = {
 
       if (
         payment.payment_status !== "paid" &&
-        payment.payment_status !== "partially_refunded"
+        payment.payment_status !== "partially_refund_requested"
       ) {
         return res.status(400).json({
           success: false,
