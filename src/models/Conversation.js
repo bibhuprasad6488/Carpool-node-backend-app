@@ -53,6 +53,54 @@ class Conversation {
             connection.release();
         }
     }
+
+    static async findByDriverId(driverId) {
+        const [rows] = await db.execute(
+            `
+        SELECT
+            c.id,
+            c.booking_id,
+            c.ride_id,
+            c.driver_id,
+            c.passenger_id,
+            c.created_at,
+
+            u.id AS user_id,
+            u.name AS user_name,
+            u.role,
+            ud.profile_picture,
+
+            m.id AS message_id,
+            m.message AS last_message,
+            m.sender_id,
+            m.created_at AS last_message_at
+
+        FROM conversations c
+
+        INNER JOIN users u
+            ON u.id = c.passenger_id
+
+        LEFT JOIN user_details ud
+            ON ud.user_id = u.id
+
+        INNER JOIN messages m
+            ON m.id = (
+                SELECT id
+                FROM messages
+                WHERE conversation_id = c.id
+                ORDER BY created_at DESC
+                LIMIT 1
+            )
+
+        WHERE c.driver_id = ?
+
+        ORDER BY m.created_at DESC
+        `,
+            [driverId]
+        );
+
+        return rows;
+    }
 }
 
 module.exports = Conversation;

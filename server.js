@@ -54,7 +54,7 @@ const apiRoutes = require("./src/routes/api");
 const adminRoutes = require("./src/routes/admin");
 
 app.use("/", webRoutes);
-app.use("/api", apiRoutes);
+app.use("/api/v1", apiRoutes);
 app.use("/api/v1/admin", adminRoutes);
 
 // Global Error Handler

@@ -15,10 +15,10 @@ const { triggerSos } = require('../controllers/sosController');
 const { storeRating } = require('../controllers/ratingController');
 
 
-router.get('/v1/get-roles', UserController.getRoles)
+router.get('/get-roles', UserController.getRoles)
 
 router.post(
-    "/v1/register",
+    "/register",
     uploadCloudinary.fields([
         { name: "driver_license", maxCount: 1 },
         { name: "adhhar_card", maxCount: 1 },
@@ -29,14 +29,14 @@ router.post(
     UserController.register
 );
 
-router.post('/v1/login', uploadCloudinary.none(), LoginController.userLogin);
-router.post("/v1/forgot-password", UserController.passwordReset);
-router.post("/v1/send-otp", UserController.sendOTP);
-router.post("/v1/verify-otp", UserController.verifyOTP);
+router.post('/login', uploadCloudinary.none(), LoginController.userLogin);
+router.post("/forgot-password", UserController.passwordReset);
+router.post("/send-otp", UserController.sendOTP);
+router.post("/verify-otp", UserController.verifyOTP);
 
-router.get('/v1/users', auth, UserController.index);
-router.get('/v1/edit-user/:id', auth, UserController.edit);
-router.get('/v1/get-me', auth, UserController.getLoginUser);
+router.get('/users', auth, UserController.index);
+router.get('/edit-user/:id', auth, UserController.edit);
+router.get('/get-me', auth, UserController.getLoginUser);
 
 /*
 |--------------------------------------------------------------------------
@@ -44,7 +44,7 @@ router.get('/v1/get-me', auth, UserController.getLoginUser);
 |--------------------------------------------------------------------------
 */
 
-// router.post("/v1/logout", AuthController.logout);
+// router.post("/logout", AuthController.logout);
 
 /*
 |--------------------------------------------------------------------------
@@ -52,10 +52,10 @@ router.get('/v1/get-me', auth, UserController.getLoginUser);
 |--------------------------------------------------------------------------
 */
 
-router.get("/v1/vehicles", auth, VehicleController.index);
-router.get("/v1/vehicles-list", auth, VehicleController.allVehicleLists);
+router.get("/vehicles", auth, VehicleController.index);
+router.get("/vehicles-list", auth, VehicleController.allVehicleLists);
 
-router.post("/v1/store-vehicle-data",
+router.post("/store-vehicle-data",
     auth,
     uploadCloudinary.fields([
         { name: "rc_file", maxCount: 1 },
@@ -68,9 +68,9 @@ router.post("/v1/store-vehicle-data",
     VehicleController.store
 );
 
-router.get("/v1/edit-vehicle-data/:id", auth, VehicleController.edit);
+router.get("/edit-vehicle-data/:id", auth, VehicleController.edit);
 
-router.put("/v1/update-vehicle-data/:id", auth,
+router.put("/update-vehicle-data/:id", auth,
     upload("vehicle").fields([
         { name: "rc_file", maxCount: 1 },
         { name: "insurance_file", maxCount: 1 },
@@ -80,20 +80,20 @@ router.put("/v1/update-vehicle-data/:id", auth,
         { name: "number_plate_image", maxCount: 1 }
     ]), VehicleController.update);
 
-// router.delete("/v1/destroy-vehicle-data/:id", auth, VehicleController.destroy);
+// router.delete("/destroy-vehicle-data/:id", auth, VehicleController.destroy);
 
 /*
 |--------------------------------------------------------------------------
 | Ride Management
 |--------------------------------------------------------------------------
 */
-router.post("/v1/find-rides", RideController.findRides);
-router.get("/v1/rides/upcoming", RideController.getUpcomingRides);
-router.post('/v1/search-locaton', RideController.searchLocations);
-router.get("/v1/rides", auth, RideController.index);
-router.post("/v1/store-ride-data", auth, RideController.store);
-router.get("/v1/edit-ride-data/:id", auth, RideController.edit);
-router.get("/v1/get-ride-data/:id", RideController.getRideData);
+router.post("/find-rides", RideController.findRides);
+router.get("/rides/upcoming", RideController.getUpcomingRides);
+router.post('/search-locaton', RideController.searchLocations);
+router.get("/rides", auth, RideController.index);
+router.post("/store-ride-data", auth, RideController.store);
+router.get("/edit-ride-data/:id", auth, RideController.edit);
+router.get("/get-ride-data/:id", RideController.getRideData);
 
 /*
 |--------------------------------------------------------------------------
@@ -101,19 +101,19 @@ router.get("/v1/get-ride-data/:id", RideController.getRideData);
 |--------------------------------------------------------------------------
 */
 
-// router.get("/v1/driver/booking-requests", auth, BookingController.index);
+// router.get("/driver/booking-requests", auth, BookingController.index);
 
-router.post("/v1/create-booking", auth, BookingController.store);
-router.post("/v1/payment-success", auth, BookingController.paymentSuccess);
-router.post("/v1/payment-failed", auth, BookingController.paymentFailed);
+router.post("/create-booking", auth, BookingController.store);
+router.post("/payment-success", auth, BookingController.paymentSuccess);
+router.post("/payment-failed", auth, BookingController.paymentFailed);
 
 // router.post("/bookings/:bookingId/refund", auth, BookingController.refund);
 
-// router.post("/v1/bookings/:id/accept", auth, BookingController.acceptUserBooking);
+// router.post("/bookings/:id/accept", auth, BookingController.acceptUserBooking);
 
-// router.post("/v1/bookings/:id/reject", auth, BookingController.rejectUserBooking);
+// router.post("/bookings/:id/reject", auth, BookingController.rejectUserBooking);
 
-// router.post("/v1/bookings/:id/cancel", auth, BookingController.cancelUserBooking);
+// router.post("/bookings/:id/cancel", auth, BookingController.cancelUserBooking);
 
 
 // Messages
@@ -125,6 +125,7 @@ router.get("/v1/messages/:conversationId", auth, ChatController.messages);
 router.post("/v1/send", auth, ChatController.send);
 
 
+router.get("/driver/chats", auth, ChatController.driverChats);
 
 
 /// SOS
