@@ -7,7 +7,7 @@ const Ride = require("../models/Ride");
 const Vehicle = require("../models/Vehicle");
 const User = require("../models/User");
 const logger = require("../config/logger");
-const { NOTIFICATION_TYPES } = require("../utils/notificationService");
+const { NOTIFICATION_TYPES, sendAdminNotification } = require("../utils/notificationService");
 
 exports.conversation = async (req, res) => {
   try {
