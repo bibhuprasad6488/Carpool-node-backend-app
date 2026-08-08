@@ -6,10 +6,25 @@ const PaymentModel = {
     const params = [];
     let whereClauses = [];
 
-    // Prefix table aliases to prevent ambiguous column reference errors
     if (status) {
-      whereClauses.push("p.payment_status = ?");
-      params.push(status);
+      const statusMap = {
+        refunded: ["refunded", "refund_requested", "refund_processed", "partially_refunded"],
+        paid: ["paid", "completed", "success"],
+        pending: ["pending", "processing", "initiated"],
+        failed: ["failed", "declined", "cancelled"],
+      };
+
+      const mappedStatuses = statusMap[status.toLowerCase()];
+
+      if (mappedStatuses && mappedStatuses.length > 0) {
+        const placeholders = mappedStatuses.map(() => "?").join(", ");
+        whereClauses.push(`p.payment_status IN (${placeholders})`);
+        params.push(...mappedStatuses);
+      } else {
+        // Fallback if status isn't in map (handles exact match fallback)
+        whereClauses.push("p.payment_status = ?");
+        params.push(status);
+      }
     }
 
     if (gateway) {
@@ -74,7 +89,7 @@ const PaymentModel = {
     // 3. Stats Aggregation Query
     const statsQuery = `
     SELECT 
-      COALESCE(SUM(CASE WHEN p.payment_status = 'paid' THEN p.amount ELSE 0 END), 0) AS total_gross
+      COALESCE(SUM(CASE WHEN p.payment_status IN ('paid', 'completed', 'success') THEN p.amount ELSE 0 END), 0) AS total_gross
     FROM payments p
     LEFT JOIN ride_bookings rb 
       ON (p.booking_id = rb.id OR p.booking_code = rb.booking_code)

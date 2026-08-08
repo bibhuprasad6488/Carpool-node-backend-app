@@ -4,6 +4,7 @@ const db = require("../config/db"); // mysql2/promise connection
 const Vehicle = require("../models/Vehicle");
 const User = require("../models/User");
 const ActivityLog = require("../models/admin/ActivityLog");
+const { sendAdminNotification, NOTIFICATION_TYPES } = require("../utils/notificationService");
 
 exports.index = async (req, res) => {
   try {
@@ -22,8 +23,8 @@ exports.index = async (req, res) => {
       },
     });
   } catch (error) {
-        // console.error(error);
-        logger.error(error);
+    // console.error(error);
+    logger.error(error);
 
     return res.status(500).json({
       status: "error",
@@ -126,7 +127,7 @@ exports.store = async (req, res) => {
 
   const driver_id = req.user.id;
 
-  // Check in existing ride 
+  // Check in existing ride
   const [activeRide] = await connection.execute(
     `
     SELECT id, departure_time, estimated_reach_time
@@ -137,20 +138,15 @@ exports.store = async (req, res) => {
     ORDER BY estimated_reach_time DESC
     LIMIT 1
     `,
-    [
-      driver_id,
-      ride_date,
-      departure_time
-    ]
+    [driver_id, ride_date, departure_time],
   );
 
   if (activeRide.length > 0) {
     return res.status(400).json({
       status: "error",
-      message: `You cannot publish a new ride until your previous ride is completed. Previous ride ends at ${activeRide[0].estimated_reach_time}.`
+      message: `You cannot publish a new ride until your previous ride is completed. Previous ride ends at ${activeRide[0].estimated_reach_time}.`,
     });
   }
-
 
   const departureDateTime = new Date(`${ride_date} ${departure_time}`);
   const departureTimestamp = Math.floor(departureDateTime.getTime() / 1000);
@@ -204,6 +200,16 @@ exports.store = async (req, res) => {
     ip_address: req.ip || req.headers["x-forwarded-for"],
     user_agent: req.headers["user-agent"],
     status: "success",
+  });
+
+  sendAdminNotification({
+    type: NOTIFICATION_TYPES.RIDE_PUBLISHED,
+    title: "New Ride Published 🚗",
+    message: `New trip published from ${source_address} to ${destination_address}.`,
+    data: {
+      rideId: rideId,
+      driverId: driver_id,
+    },
   });
 
   return res.status(201).json({
@@ -307,7 +313,7 @@ exports.getUpcomingRides = async (req, res) => {
       applied_coordinates: {
         latitude: parseFloat(lat),
         longitude: parseFloat(lng),
-        is_fallback: !req.query.lat || !req.query.lng
+        is_fallback: !req.query.lat || !req.query.lng,
       },
       count: rides.length,
       rides: rides,

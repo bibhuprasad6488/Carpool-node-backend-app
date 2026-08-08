@@ -6,6 +6,7 @@ const Ride = require("../models/Ride");
 const Conversation = require("../models/Conversation");
 const logger = require("../config/logger");
 const User = require("../models/User");
+const { sendAdminNotification, NOTIFICATION_TYPES } = require("../utils/notificationService");
 const validatePaymentVerification =
   require("razorpay/dist/utils/razorpay-utils").validatePaymentVerification;
 
@@ -188,6 +189,19 @@ exports.store = async (req, res) => {
     const expiryTime = new Date(createdAt.getTime() + 5 * 60 * 1000);
 
     connection.release();
+
+    sendAdminNotification({
+      type: NOTIFICATION_TYPES.RIDE_BOOKED,
+      title: "Ride Seat Booked 🎟️",
+      message: `User ${req.user.name || req.user.id} booked a seat on Ride #${ride_id}.`,
+      data: {
+        bookingId: bookingId,
+        rideId: ride_id,
+        passengerId: req.user.id,
+        order_id: order.id,
+        amount: totalPrice,
+      },
+    });
     return res.json({
       status: "success",
       booking_id: bookingId,

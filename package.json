@@ -13,6 +13,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@rudranarayan01/logaccent": "^0.1.0",
     "axios": "^1.18.1",
     "bcryptjs": "^3.0.3",
     "bullmq": "^6.0.6",

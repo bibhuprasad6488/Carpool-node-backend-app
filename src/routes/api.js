@@ -118,20 +118,20 @@ router.post("/payment-failed", auth, BookingController.paymentFailed);
 
 // Messages
 
-router.get("/conversation/:bookingId", auth, ChatController.conversation);
+router.get("/v1/conversation/:bookingId", auth, ChatController.conversation);
 
-router.get("/messages/:conversationId", auth, ChatController.messages);
+router.get("/v1/messages/:conversationId", auth, ChatController.messages);
 
-router.post("/send", auth, ChatController.send);
+router.post("/v1/send", auth, ChatController.send);
 
 
 router.get("/driver/chats", auth, ChatController.driverChats);
 
 
 /// SOS
-router.post("/rides/:ride_id/sos", auth, triggerSos);
+router.post("/v1/rides/:ride_id/sos", auth, triggerSos);
 
 // Ratings
-router.post("/ratings", auth, storeRating);
+router.post("/v1/ratings", auth, storeRating);
 
 module.exports = router;
