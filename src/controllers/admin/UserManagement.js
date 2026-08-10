@@ -1,12 +1,12 @@
 const UserManagement = require("../../models/admin/User.admin");
+const APP_URL = process.env.APP_URL;
 
-const safeFormatUrl = (url) => {
-  if (!url) return null;
-  try {
-    return typeof formatUrl === "function" ? formatUrl(url) : url;
-  } catch (err) {
-    return url;
-  }
+const formatUrl = (filePath) => {
+    if (!filePath) return "";
+    if (filePath.startsWith("http://") || filePath.startsWith("https://")) {
+        return filePath;
+    }
+    return `${APP_URL}/uploads/user/${filePath}`;
 };
 
 exports.getUsers = async (req, res) => {
@@ -58,7 +58,7 @@ exports.getUsers = async (req, res) => {
         status: u.status || "active",
         verification_status: verificationStatus,
         kyc_status: u.kyc_status || "pending",
-        profile_picture: safeFormatUrl(u.profile_picture),
+        profile_picture: formatUrl(u.profile_picture),
         location:
           u.city && u.state
             ? `${u.city}, ${u.state}`
@@ -140,20 +140,20 @@ exports.getUserDetails = async (req, res) => {
           verification_status: verificationStatus,
           created_at: user.created_at || new Date().toISOString(),
           updated_at: user.updated_at || null,
-          profile_picture: safeFormatUrl(user.profile_picture),
+          profile_picture: formatUrl(user.profile_picture),
           user_details: {
             city: user.city || "N/A",
             state: user.state || "N/A",
             country: user.country || "N/A",
             address: user.address || "N/A",
             postal_code: user.postal_code || "N/A",
-            driver_license: safeFormatUrl(user.driver_license),
+            driver_license: formatUrl(user.driver_license),
             is_dl_verified: user.is_dl_verified || "pending",
-            adhhar_card: safeFormatUrl(user.adhhar_card),
+            adhhar_card: formatUrl(user.adhhar_card),
             is_adhhar_verified: user.is_adhhar_verified || "pending",
-            pan_card: safeFormatUrl(user.pan_card),
+            pan_card: formatUrl(user.pan_card),
             is_pan_verified: user.is_pan_verified || "pending",
-            bank_account: safeFormatUrl(user.bank_account),
+            bank_account: formatUrl(user.bank_account),
             bank_account_holder: user.bank_account_holder || "N/A",
             bank_account_number: user.bank_account_number || "N/A",
             bank_name: user.bank_name || "N/A",
@@ -208,6 +208,45 @@ exports.updateUserStatus = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Internal server error while updating user status.",
+    });
+  }
+};
+
+exports.blockUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const status = "blocked";
+
+    // Check if user exists
+    const user = await UserManagement.findById(id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found.",
+      });
+    }
+
+    // Optional Guard: Check if user is already blocked
+    if (user.status === status) {
+      return res.status(400).json({
+        success: false,
+        message: "User is already blocked.",
+      });
+    }
+
+    // Update status to blocked
+    await UserManagement.updateUserStatus(id, status);
+
+    return res.status(200).json({
+      success: true,
+      message: "User account has been successfully blocked.",
+      data: { userId: id, status },
+    });
+  } catch (error) {
+    console.error("Error blocking user:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error while blocking user.",
     });
   }
 };
