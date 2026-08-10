@@ -1,0 +1,90 @@
+name: Development CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - development
+
+jobs:
+  # -------------------------------------------------------------
+  # JOB 1: Code Validation & Testing Gate
+  # -------------------------------------------------------------
+  test:
+    name: 🧪 Run Tests & Syntax Verification
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Execute Tests
+        run: npm test
+
+  # -------------------------------------------------------------
+  # JOB 2: Auto-Versioning, Git Tagging & Render Deployment
+  # -------------------------------------------------------------
+  release-and-deploy:
+    name: 🏷️ Bump Version, Create Tag & Deploy to Render
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Required to push tags & changelog commits back to GitHub
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Full history required for standard-version
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Configure Git Credentials
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump Version & Create Git Tag
+        id: versioning
+        run: |
+          # Bumps prerelease version (e.g. v1.0.0 -> v1.0.1-dev.0)
+          npm run release:dev
+          
+          # Extract current version from package.json
+          NEW_VERSION=$(node -p "require('./package.json').version")
+          echo "VERSION=v$NEW_VERSION" >> $GITHUB_ENV
+          echo "Generated version: v$NEW_VERSION"
+
+      - name: Push Commits & Tags to GitHub
+        run: |
+          git push --follow-tags origin development
+
+      - name: Trigger Render Development Deployment
+        env:
+          DEPLOY_HOOK: ${{ secrets.RENDER_DEV_DEPLOY_HOOK_URL }}
+        run: |
+          echo "🚀 Triggering Render deployment for version ${{ env.VERSION }}..."
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$DEPLOY_HOOK")
+          HTTP_STATUS=$(echo "$RESPONSE" | tail -n1)
+          
+          if [ "$HTTP_STATUS" -eq 200 ] || [ "$HTTP_STATUS" -eq 201 ]; then
+            echo "✅ Successfully triggered Render deployment!"
+          else
+            echo "❌ Failed to trigger Render deployment. HTTP Status: $HTTP_STATUS"
+            exit 1
+          fi

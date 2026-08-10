@@ -7,7 +7,10 @@ const Ride = require("../models/Ride");
 const Vehicle = require("../models/Vehicle");
 const User = require("../models/User");
 const logger = require("../config/logger");
-const { NOTIFICATION_TYPES, sendAdminNotification } = require("../utils/notificationService");
+const {
+  NOTIFICATION_TYPES,
+  sendAdminNotification,
+} = require("../utils/notificationService");
 
 exports.conversation = async (req, res) => {
   try {
@@ -187,7 +190,7 @@ exports.send = async (req, res) => {
       message: `New message from ${req.user.id}.`,
       data: {
         conversation_id: conversation_id,
-        message:newMessage,
+        message: newMessage,
       },
     });
 

@@ -7,6 +7,8 @@ const NOTIFICATION_TYPES = {
   PAYMENT_RECEIVED: "PAYMENT_RECEIVED",
   USER_REGISTERED: "USER_REGISTERED",
   CONVERSATION: "CONVERSATION",
+  RATINGS: "RATINGS",
+  EMERGENCY: "EMERGENCY",
 };
 
 const sendAdminNotification = ({ type, title, message, data = {} }) => {

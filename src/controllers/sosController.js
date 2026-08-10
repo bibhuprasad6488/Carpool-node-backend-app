@@ -3,6 +3,10 @@ const SosModel = require("../models/sosModel");
 const { getIO } = require("../../socket");
 // const sosQueue = require("../queues/sosQueue");
 const logger = require("../config/logger");
+const {
+  sendAdminNotification,
+  NOTIFICATION_TYPES,
+} = require("../utils/notificationService");
 
 exports.triggerSos = async (req, res) => {
   const connection = await db.getConnection();
@@ -75,6 +79,19 @@ exports.triggerSos = async (req, res) => {
     //   latitude,
     //   longitude,
     // });
+
+    sendAdminNotification({
+      type: NOTIFICATION_TYPES.EMERGENCY,
+      title: "Emergency alert🚨🚨 ",
+      message: `New SOS triggered by ${userType} with ID ${req.user.id}.`,
+      data: {
+        sos_id: sosId,
+        ride_id: ride_id,
+        user_type: userType,
+        lat:latitude,
+        long: longitude,
+      },
+    });
 
     return res.status(200).json({
       status: "success",
