@@ -28,8 +28,6 @@ const {
     getPendingDrivers,
 } = require("../controllers/admin/DriverManagement");
 const {
-    getConversations,
-    getConversationMessages,
     createConversation,
     getAllConversations,
     getConversationMessages2,
