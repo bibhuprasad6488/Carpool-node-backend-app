@@ -161,6 +161,15 @@ exports.getUserDetails = async (req, res) => {
             is_account_verified: user.is_account_verified || "pending",
             details_status: user.details_status || "pending",
           },
+          stats:{
+            totalEarned:4500,
+            totalSpent: 5000,
+            bookingsMade: 20,
+            ridesPublished:80,
+            completionRate: "80%",
+            rating:4.5,
+            totalReviews: 100
+          }
         },
       },
     });
