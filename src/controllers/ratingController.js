@@ -2,6 +2,7 @@
 const db = require("../config/db");
 const RatingModel = require("../models/ratingModel");
 const logger = require("../config/logger");
+const { sendAdminNotification, NOTIFICATION_TYPES } = require("../utils/notificationService");
 
 exports.storeRating = async (req, res) => {
   const connection = await db.getConnection();
@@ -74,6 +75,17 @@ exports.storeRating = async (req, res) => {
 
     await connection.commit();
     connection.release();
+
+    sendAdminNotification({
+      type: NOTIFICATION_TYPES.RATINGS,
+      title: "New ratings ",
+      message: `New ratings from USER ${req.user.id}.`,
+      data: {
+        bookingId: booking_id,
+        ratings: rating,
+        review: review
+      },
+    });
 
     return res.status(201).json({
       status: "success",

@@ -4,29 +4,6 @@ const logger = require("../../config/logger");
 
 
 
-exports.getConversationMessages = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const conversation = await ConversationManagement.findById(id);
-
-    if (!conversation) {
-      return res.status(404).json({ success: false, message: "Conversation not found." });
-    }
-
-    // const messages = await Message.getMessages(id);
-    return res.status(200).json({
-      success: true,
-      data: {
-        conversation,
-        // messages
-      }
-    });
-  } catch (error) {
-    console.error("Error fetching admin conversation messages:", error);
-    return res.status(500).json({ success: false, message: "Internal server error." });
-  }
-};
-
 exports.createConversation = async (req, res) => {
   try {
     const errors = validationResult(req);

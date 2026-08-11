@@ -1,0 +1,77 @@
+name: PR Quality Gate & Validation
+
+on:
+  pull_request:
+    branches:
+      - development
+    types: [opened, synchronize, reopened, edited]
+
+jobs:
+  # -------------------------------------------------------------
+  # JOB 1: Verify PR Title Follows Conventional Commits
+  # -------------------------------------------------------------
+  pr-title-check:
+    name: 📝 Validate PR Title Format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate Conventional PR Title
+        uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            docs
+            style
+            refactor
+            perf
+            test
+            build
+            ci
+            chore
+          requireScope: false
+
+  # -------------------------------------------------------------
+  # JOB 2: Linting & Code Quality Check
+  # -------------------------------------------------------------
+  lint:
+    name: 🔍 Code Linting (ESLint)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+  # -------------------------------------------------------------
+  # JOB 3: Unit Testing & Pass Verification
+  # -------------------------------------------------------------
+  test:
+    name: 🧪 Run Test Suite (Jest)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run Tests
+        run: npm test

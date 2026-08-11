@@ -28,8 +28,6 @@ const {
     getPendingDrivers,
 } = require("../controllers/admin/DriverManagement");
 const {
-    getConversations,
-    getConversationMessages,
     createConversation,
     getAllConversations,
     getConversationMessages2,
@@ -52,6 +50,7 @@ router.get('/dashboard/analytics', auth, isAdmin, getPlatformPerformance);
 router.get("/users", auth, isAdmin, adminUserController.getUsers);
 router.get("/users/:id", auth, isAdmin, adminUserController.getUserDetails);
 router.patch("/users/:id", auth, isAdmin, adminUserController.updateUserStatus);
+router.patch("/users/:id/block", auth, isAdmin, adminUserController.blockUser);
 
 router.get("/rides", auth, isAdmin, getAllRides);
 router.get("/rides/:id", auth, isAdmin, getRideDetails);
