@@ -7,8 +7,8 @@ const Conversation = require("../models/Conversation");
 const logger = require("../config/logger");
 const User = require("../models/User");
 const { sendAdminNotification, NOTIFICATION_TYPES } = require("../utils/notificationService");
-const validatePaymentVerification =
-  require("razorpay/dist/utils/razorpay-utils").validatePaymentVerification;
+const Vehicle = require("../models/Vehicle");
+const validatePaymentVerification = require("razorpay/dist/utils/razorpay-utils").validatePaymentVerification;
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY,
@@ -614,7 +614,9 @@ exports.updatePaymentsRecord = async (req, res) => {
     if (bookings) {
       console.log("book", bookings);
     }
-  } catch (error) {}
+  } catch (error) {
+    logger.error(error)
+  }
 };
 
 // private function for format

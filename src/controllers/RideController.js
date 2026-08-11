@@ -5,6 +5,7 @@ const Vehicle = require("../models/Vehicle");
 const User = require("../models/User");
 const ActivityLog = require("../models/admin/ActivityLog");
 const { sendAdminNotification, NOTIFICATION_TYPES } = require("../utils/notificationService");
+const { logger } = require("@rudranarayan01/logaccent");
 
 exports.index = async (req, res) => {
   try {
