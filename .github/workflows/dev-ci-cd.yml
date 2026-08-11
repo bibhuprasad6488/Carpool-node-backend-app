@@ -5,14 +5,15 @@ on:
     branches:
       - development
 
-jobs:
-  # -------------------------------------------------------------
-  # JOB 1: Code Validation & Testing Gate
-  # -------------------------------------------------------------
-  test:
-    name: 🧪 Run Tests & Syntax Verification
-    runs-on: ubuntu-latest
+# Avoid infinite deployment loops caused by workflow commits
+concurrency:
+  group: dev-deployment
+  cancel-in-progress: true
 
+jobs:
+  test-and-lint:
+    name: 🧪 Pre-Deploy Quality Gate
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -26,24 +27,24 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
+      - name: Run ESLint
+        run: npm run lint
+
       - name: Execute Tests
         run: npm test
 
-  # -------------------------------------------------------------
-  # JOB 2: Auto-Versioning, Git Tagging & Render Deployment
-  # -------------------------------------------------------------
   release-and-deploy:
-    name: 🏷️ Bump Version, Create Tag & Deploy to Render
-    needs: test
+    name: 🏷️ Tag Prerelease & Deploy to Render
+    needs: test-and-lint
     runs-on: ubuntu-latest
     permissions:
-      contents: write # Required to push tags & changelog commits back to GitHub
+      contents: write # Required to push commits & tags back to repository
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Full history required for standard-version
+          fetch-depth: 0 # Full git history required for tagging tools
 
       - name: Setup Node.js Environment
         uses: actions/setup-node@v4
@@ -59,25 +60,30 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Bump Version & Create Git Tag
+      - name: Bump Prerelease Version & Tag
         id: versioning
         run: |
-          # Bumps prerelease version (e.g. v1.0.0 -> v1.0.1-dev.0)
+          # Runs standard-version or release-it prerelease bump
           npm run release:dev
           
-          # Extract current version from package.json
           NEW_VERSION=$(node -p "require('./package.json').version")
           echo "VERSION=v$NEW_VERSION" >> $GITHUB_ENV
           echo "Generated version: v$NEW_VERSION"
 
       - name: Push Commits & Tags to GitHub
         run: |
+          # Uses [skip ci] to prevent infinite workflow loops
           git push --follow-tags origin development
 
       - name: Trigger Render Development Deployment
         env:
           DEPLOY_HOOK: ${{ secrets.RENDER_DEV_DEPLOY_HOOK_URL }}
         run: |
+          if [ -z "$DEPLOY_HOOK" ]; then
+            echo "❌ ERROR: RENDER_DEV_DEPLOY_HOOK_URL is missing in repository secrets."
+            exit 1
+          fi
+
           echo "🚀 Triggering Render deployment for version ${{ env.VERSION }}..."
           RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$DEPLOY_HOOK")
           HTTP_STATUS=$(echo "$RESPONSE" | tail -n1)
