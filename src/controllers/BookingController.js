@@ -6,9 +6,14 @@ const Ride = require("../models/Ride");
 const Conversation = require("../models/Conversation");
 const logger = require("../config/logger");
 const User = require("../models/User");
-const { sendAdminNotification, NOTIFICATION_TYPES } = require("../utils/notificationService");
+const {
+  sendAdminNotification,
+  NOTIFICATION_TYPES,
+  sendUserNotification,
+} = require("../utils/notificationService");
 const Vehicle = require("../models/Vehicle");
-const validatePaymentVerification = require("razorpay/dist/utils/razorpay-utils").validatePaymentVerification;
+const validatePaymentVerification =
+  require("razorpay/dist/utils/razorpay-utils").validatePaymentVerification;
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY,
@@ -202,6 +207,16 @@ exports.store = async (req, res) => {
         amount: totalPrice,
       },
     });
+
+    const user_id = req.user.id;
+    sendUserNotification({
+      userId: ride.driver_id,
+      type: NOTIFICATION_TYPES.RIDE_BOOKED,
+      title: "New Ride Request! 🚗",
+      message: "A passenger has booked a seat on your trip.",
+      data: { ride_id , bookingId, user_id },
+    });
+    
     return res.json({
       status: "success",
       booking_id: bookingId,
@@ -615,7 +630,7 @@ exports.updatePaymentsRecord = async (req, res) => {
       console.log("book", bookings);
     }
   } catch (error) {
-    logger.error(error)
+    logger.error(error);
   }
 };
 

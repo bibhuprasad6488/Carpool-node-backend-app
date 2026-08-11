@@ -109,7 +109,7 @@ class Ride {
         ride.bookingDetails = bookingRows;
 
         return ride;
-      })
+      }),
     );
 
     return mapBookings;
@@ -126,7 +126,7 @@ class Ride {
           AND rb.payment_status = 'paid'
           AND rb.status = 'confirmed'
         `,
-      [driverId]
+      [driverId],
     );
 
     return rows[0].total_booked_seats;
@@ -143,7 +143,7 @@ class Ride {
           AND rb.payment_status = 'paid'
           AND rb.status = 'confirmed'
         `,
-      [driverId]
+      [driverId],
     );
 
     return Number(rows[0].total_earning);
@@ -530,6 +530,101 @@ class Ride {
       registration_number: ride.registration_number,
       fuel_type: ride.fuel_type,
     }));
+  }
+
+  static async findRideByIdAndDriver(rideId, driverId) {
+    const [rows] = await db.query(
+      "SELECT * FROM rides WHERE id = ? AND driver_id = ? LIMIT 1",
+      [rideId, driverId],
+    );
+    return rows[0] || null;
+  }
+  
+  static async startRideWithBookings(rideId) {
+    const connection = await db.getConnection();
+    try {
+      await connection.beginTransaction();
+
+      // 1. Update ride status
+      await connection.query(
+        `UPDATE rides SET status = 'ongoing', updated_at = NOW() WHERE id = ?`,
+        [rideId],
+      );
+
+      // 2. Update all active/confirmed bookings for this ride to 'ongoing'
+      await connection.query(
+        `UPDATE ride_bookings 
+       SET status = 'ongoing', updated_at = NOW() 
+       WHERE ride_id = ? AND status IN ('accepted', 'confirmed')`,
+        [rideId],
+      );
+
+      await connection.commit();
+      return true;
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
+  }
+
+  static async completeRideWithBookings(rideId) {
+    const connection = await db.getConnection();
+    try {
+      await connection.beginTransaction();
+
+      // 1. Update ride status
+      await connection.query(
+        `UPDATE rides SET status = 'completed', updated_at = NOW() WHERE id = ?`,
+        [rideId],
+      );
+
+      // 2. Update bookings to completed
+      await connection.query(
+        `UPDATE ride_bookings 
+       SET status = 'completed', completed_at = NOW(), updated_at = NOW() 
+       WHERE ride_id = ? AND status IN ('ongoing', 'accepted', 'confirmed')`,
+        [rideId],
+      );
+
+      await connection.commit();
+      return true;
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
+  }
+
+  static async cancelRideWithBookings(rideId, cancelReason = null) {
+    const connection = await db.getConnection();
+    try {
+      await connection.beginTransaction();
+
+      // 1. Update ride status
+      await connection.query(
+        `UPDATE rides SET status = 'cancelled', updated_at = NOW() WHERE id = ?`,
+        [rideId],
+      );
+
+      // 2. Update active bookings to cancelled
+      await connection.query(
+        `UPDATE ride_bookings 
+       SET status = 'cancelled', cancelled_at = NOW(), cancel_reason = ?, updated_at = NOW() 
+       WHERE ride_id = ? AND status NOT IN ('cancelled', 'completed')`,
+        [cancelReason, rideId],
+      );
+
+      await connection.commit();
+      return true;
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
   }
 }
 
