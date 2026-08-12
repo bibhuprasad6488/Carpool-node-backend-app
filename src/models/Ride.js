@@ -539,7 +539,7 @@ class Ride {
     );
     return rows[0] || null;
   }
-  
+
   static async startRideWithBookings(rideId) {
     const connection = await db.getConnection();
     try {
@@ -625,6 +625,37 @@ class Ride {
     } finally {
       connection.release();
     }
+  }
+
+  static async getTopBookedCorridors(limit = 5) {
+    const parsedLimit = Math.max(1, parseInt(limit, 10) || 5);
+
+    const query = `
+    SELECT 
+      CONCAT(r.origin, ' ➔ ', r.destination) AS route,
+      r.origin,
+      r.destination,
+      COUNT(r.id) AS total_trips,
+      ROUND(COALESCE(AVG(r.price_per_seat), 0), 2) AS avg_fare
+    FROM (
+      SELECT 
+        id,
+        price_per_seat,
+        TRIM(SUBSTRING_INDEX(source_address, ',', 1)) AS origin,
+        TRIM(SUBSTRING_INDEX(destination_address, ',', 1)) AS destination
+      FROM rides
+      WHERE status IN ('scheduled', 'ongoing', 'completed')
+        AND source_address IS NOT NULL 
+        AND destination_address IS NOT NULL
+    ) AS r
+    WHERE r.origin != '' AND r.destination != ''
+    GROUP BY r.origin, r.destination
+    ORDER BY total_trips DESC
+    LIMIT ${parsedLimit}
+  `;
+
+    const [rows] = await db.execute(query);
+    return rows;
   }
 }
 

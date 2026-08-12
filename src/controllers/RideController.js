@@ -483,19 +483,14 @@ exports.cancelRide = async (req, res) => {
     }
 
     if (ride.status === "completed") {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Completed rides cannot be cancelled",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Completed rides cannot be cancelled",
+      });
     }
 
     // Atomically updates rides and ride_bookings to 'cancelled' with cancel_reason
-    await Ride.cancelRideWithBookings(
-      rideId,
-      reason || "Cancelled by driver",
-    );
+    await Ride.cancelRideWithBookings(rideId, reason || "Cancelled by driver");
 
     // Socket real-time broadcast
     sendRideRoomNotification({
@@ -518,5 +513,43 @@ exports.cancelRide = async (req, res) => {
     return res
       .status(500)
       .json({ success: false, message: "Server error while cancelling ride" });
+  }
+};
+
+exports.getTopCorridors = async function (req, res) {
+  try {
+    // Optional limit query param, defaults to 5 if not provided or invalid
+    const limit = parseInt(req.query.limit, 10) || 5;
+
+    const rawCorridors = await Ride.getTopBookedCorridors(limit);
+
+    // Format output for frontend consumption
+    const topCorridors = rawCorridors.map((row) => {
+      const trips = Number(row.total_trips || 0);
+      const fare = Number(row.avg_fare || 0);
+
+      return {
+        route: row.route,
+        origin: row.origin,
+        destination: row.destination,
+        total_trips: trips,
+        volume_label: `${trips.toLocaleString("en-IN")} trips`,
+        avg_fare: fare,
+        fare_label: `₹${fare.toFixed(2)}`,
+      };
+    });
+
+    return res.status(200).json({
+      success: true,
+      count: topCorridors.length,
+      data: topCorridors,
+    });
+  } catch (error) {
+    console.error("Error fetching top corridors:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to retrieve top performing routes.",
+      error: error.message,
+    });
   }
 };

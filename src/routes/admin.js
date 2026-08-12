@@ -39,7 +39,7 @@ const {
 const paymentController = require("../controllers/admin/paymentController");
 const { getAllSosAlerts, getSosById, updateSosStatus } = require("../controllers/sosController");
 const { getAdminRatings, deleteRating } = require("../controllers/admin/adminRatingController");
-const { getDashboardBootstrap, getPlatformPerformance } = require("../controllers/admin/adminDashboard");
+const { getDashboardBootstrap, getPlatformPerformance, getGrowthAnalytics } = require("../controllers/admin/adminDashboard");
 const { getIO } = require("../../socket");
 const { getCommission, updateCommission, getSettings } = require("../controllers/admin/siteSetting.controller");
 
@@ -51,6 +51,7 @@ router.post("/login", adminAuthController.adminLogin);
 
 router.get('/dashboard/bootstrap', auth, isAdmin, getDashboardBootstrap);
 router.get('/dashboard/analytics', auth, isAdmin, getPlatformPerformance);
+router.get('/dashboard/growth', auth, isAdmin, getGrowthAnalytics);
 
 router.get("/users", auth, isAdmin, adminUserController.getUsers);
 router.get("/users/:id", auth, isAdmin, adminUserController.getUserDetails);
