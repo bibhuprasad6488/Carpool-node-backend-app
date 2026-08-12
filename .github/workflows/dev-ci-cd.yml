@@ -44,7 +44,8 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Full git history required for tagging tools
+          fetch-depth: 0
+          token: ${{ secrets.ADMIN_GITHUB_TOKEN }} # Full git history required for tagging tools
 
       - name: Setup Node.js Environment
         uses: actions/setup-node@v4
