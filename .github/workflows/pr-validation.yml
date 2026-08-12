@@ -29,8 +29,8 @@ jobs:
             chore
           requireScope: false
 
-  lint-and-test:
-    name: 🧪 Lint & Run Unit Tests
+  eslint-check:
+    name: Code Linting (ESLint)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -47,6 +47,22 @@ jobs:
 
       - name: Run ESLint
         run: npm run lint
+
+  test-check:
+    name: Run Test Suite (Jest)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
 
       - name: Run Tests
         run: npm test
