@@ -94,6 +94,9 @@ router.get("/rides", auth, RideController.index);
 router.post("/store-ride-data", auth, RideController.store);
 router.get("/edit-ride-data/:id", auth, RideController.edit);
 router.get("/get-ride-data/:id", RideController.getRideData);
+router.patch('/ride/:rideId/start', auth, RideController.startRide);
+router.patch('/ride/:rideId/complete', auth, RideController.completeRide);
+router.patch('/ride/:rideId/cancel', auth, RideController.cancelRide);
 
 /*
 |--------------------------------------------------------------------------

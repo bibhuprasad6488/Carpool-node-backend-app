@@ -16,7 +16,7 @@ const sosWorker = new Worker(
 
     // TODO: Later when you implement Twilio, fetch user/driver numbers and send SMS here.
     logger.info(
-      `[BACKGROUND WORKER] Processing SOS Alert #${sosId} for Ride #${rideId}`,
+      `[BACKGROUND WORKER] Processing SOS Alert #${sosId} for Ride #${rideId} and Driver #${driverId}`,
     );
     console.log(
       `[SOS QUEUE] Triggered by User #${userId} for Ride #${rideId} at Lat: ${latitude}, Lng: ${longitude}`,

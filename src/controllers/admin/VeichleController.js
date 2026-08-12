@@ -1,4 +1,3 @@
-const Vehicle = require("../../models/Vehicle");
 const ActivityLog = require("../../models/admin/ActivityLog");
 const VehicleAdminModel = require("../../models/admin/Vehichle.admin");
 

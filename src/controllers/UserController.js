@@ -5,7 +5,7 @@ const logger = require("../config/logger");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const db = require("../config/db");
-const transporter = require("../config/mail");
+// const transporter = require("../config/mail");
 const APP_URL = process.env.APP_URL;
 
 exports.index = async (req, res) => {
@@ -174,24 +174,6 @@ exports.register = async (req, res) => {
   }
 };
 
-exports.updateUserDetails = async (req, res) => {
-  const {
-    name,
-    email,
-    phone,
-    password,
-    role_id,
-    city,
-    state,
-    country,
-    postal_code,
-    address,
-    bank_account_holder,
-    bank_account_number,
-    bank_account_ifsc,
-    bank_branch_name,
-  } = req.body;
-};
 
 exports.checkPhone = async (req, res) => {
   try {

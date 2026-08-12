@@ -13,7 +13,7 @@ const {
     getFullRideDetails,
 } = require("../controllers/admin/RideManagement");
 const adminUserController = require("../controllers/admin/UserManagement");
-const { getAllActivityLogs } = require("../controllers/admin/ActivityLogs");
+const { getAllActivityLogs, getActivityLogById, clearAllActivityLogs } = require("../controllers/admin/ActivityLogs");
 const {
     updateVehicleStatus,
     getAllVehicles,
@@ -31,12 +31,16 @@ const {
     createConversation,
     getAllConversations,
     getConversationMessages2,
+    clearConversationMessages,
+    deleteConversation,
+    deleteSingleMessage,
 } = require("../controllers/admin/ChatManagement");
 const paymentController = require("../controllers/admin/paymentController");
 const { getAllSosAlerts, getSosById, updateSosStatus } = require("../controllers/sosController");
 const { getAdminRatings, deleteRating } = require("../controllers/admin/adminRatingController");
 const { getDashboardBootstrap, getPlatformPerformance } = require("../controllers/admin/adminDashboard");
 const { getIO } = require("../../socket");
+const { getCommission, updateCommission, getSettings } = require("../controllers/admin/siteSetting.controller");
 
 router.get("/dashboard", auth, isAdmin, (req, res) => {
     res.json({ message: "Welcome to the admin panel backend!" });
@@ -76,6 +80,9 @@ router.get('/vehicles/user/:userId', auth, isAdmin, getVehiclesByUser);
 router.get("/conversations", auth, isAdmin, getAllConversations);
 router.post("/conversations", auth, isAdmin, createConversation);
 router.get("/conversations/:id/messages", auth, isAdmin, getConversationMessages2);
+router.delete("/conversations/:id/messages", auth, isAdmin, clearConversationMessages);
+router.delete("/conversations/:id", auth, isAdmin, deleteConversation);
+router.delete("/conversations/messages/:messageId", auth, isAdmin, deleteSingleMessage);
 
 router.get('/payments/', auth, isAdmin, paymentController.getAllPayments);
 router.get('/payments/:id', auth, isAdmin, paymentController.getPaymentById);
@@ -90,6 +97,8 @@ router.get("/sos/:id", auth, isAdmin, getSosById);
 router.patch("/sos/:id/status", auth, isAdmin, updateSosStatus);
 
 router.get("/activity-logs", auth, isAdmin, getAllActivityLogs);
+router.get("/activity-logs/:id", auth, isAdmin, getActivityLogById);
+router.delete("/activity-logs/clear-all", auth, isAdmin, clearAllActivityLogs);
 
 // Ratings
 router.get("/ratings",auth, isAdmin, getAdminRatings);
@@ -118,5 +127,22 @@ router.post("/test-admin-notification", (req, res) => {
     payload,
   });
 });
+
+router.get('/platform/commission', auth, isAdmin, getCommission);
+router.put('/platform/commission', auth, isAdmin, updateCommission);
+router.get('/platform/', auth, isAdmin, getSettings);
+// router.put(
+//   '/',
+//   auth,
+//   isAdmin,
+//   upload.fields([
+//     { name: 'site_logo', maxCount: 1 },
+//     { name: 'footer_logo', maxCount: 1 },
+//     { name: 'footer_logo_one', maxCount: 1 },
+//     { name: 'footer_logo_two', maxCount: 1 },
+//     { name: 'favicon', maxCount: 1 }
+//   ]),
+//   updateSettings
+// );
 
 module.exports = router;
