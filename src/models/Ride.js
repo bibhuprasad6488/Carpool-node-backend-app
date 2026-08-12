@@ -1,5 +1,5 @@
 const db = require("../config/db");
-const redis = require("../config/redis");
+// const redis = require("../config/redis");
 
 const formatProfileUrl = (filePath) => {
   if (!filePath) return "";

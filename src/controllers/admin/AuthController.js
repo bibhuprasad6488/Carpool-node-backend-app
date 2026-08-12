@@ -2,13 +2,15 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../../models/User");
 
-const formatUrl = (filePath) => {
-    if (!filePath) return "";
-    if (filePath.startsWith("http://") || filePath.startsWith("https://")) {
-        return filePath;
-    }
-    return `${APP_URL}/uploads/user/${filePath}`;
-};
+// const APP_URL = process.env.APP_URL;
+
+// const formatUrl = (filePath) => {
+//     if (!filePath) return "";
+//     if (filePath.startsWith("http://") || filePath.startsWith("https://")) {
+//         return filePath;
+//     }
+//     return `${APP_URL}/uploads/user/${filePath}`;
+// };
 
 exports.adminLogin = async (req, res) => {
   try {
@@ -66,8 +68,8 @@ exports.adminLogin = async (req, res) => {
     );
 
     // 5. Fetch Admin Data & Format Media URLs
-    const adminDetails = await User.getAdminProfileById(user.id);
-    let profilePictureUrl = null;
+    // const adminDetails = await User.getAdminProfileById(user.id);
+    // let profilePictureUrl = null;
     
     // if (adminDetails && adminDetails.profile_picture) {
     //   profilePictureUrl = formatUrl(adminDetails.profile_picture);

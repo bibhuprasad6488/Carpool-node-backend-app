@@ -214,9 +214,9 @@ exports.store = async (req, res) => {
       type: NOTIFICATION_TYPES.RIDE_BOOKED,
       title: "New Ride Request! 🚗",
       message: "A passenger has booked a seat on your trip.",
-      data: { ride_id , bookingId, user_id },
+      data: { ride_id, bookingId, user_id },
     });
-    
+
     return res.json({
       status: "success",
       booking_id: bookingId,
@@ -622,15 +622,31 @@ exports.paymentFailed = async (req, res) => {
 
 exports.updatePaymentsRecord = async (req, res) => {
   try {
-    const [bookings] = await db.query(
-      `SELECT id, total_price FROM ride_bookings ORDER BY id DESC`,
-    );
+    const bookings = await Booking.getAllBookingsForPayment();
 
-    if (bookings) {
-      console.log("book", bookings);
+    if (!bookings || bookings.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No booking records found",
+      });
     }
+
+    console.log("Bookings retrieved for payment sync:", bookings);
+
+    // Add any additional calculation/batch payment update logic here
+
+    return res.status(200).json({
+      success: true,
+      message: "Payment records retrieved successfully",
+      data: bookings,
+    });
   } catch (error) {
-    logger.error(error);
+    logger.error("Error in updatePaymentsRecord controller:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update payment records",
+      error: error.message,
+    });
   }
 };
 

@@ -40,7 +40,7 @@ const { getAllSosAlerts, getSosById, updateSosStatus } = require("../controllers
 const { getAdminRatings, deleteRating } = require("../controllers/admin/adminRatingController");
 const { getDashboardBootstrap, getPlatformPerformance } = require("../controllers/admin/adminDashboard");
 const { getIO } = require("../../socket");
-const { getCommission, updateCommission, getSettings, updateSettings } = require("../controllers/admin/siteSetting.controller");
+const { getCommission, updateCommission, getSettings } = require("../controllers/admin/siteSetting.controller");
 
 router.get("/dashboard", auth, isAdmin, (req, res) => {
     res.json({ message: "Welcome to the admin panel backend!" });
