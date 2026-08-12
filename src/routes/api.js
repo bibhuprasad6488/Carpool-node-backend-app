@@ -19,13 +19,6 @@ router.get('/get-roles', UserController.getRoles)
 
 router.post(
     "/register",
-    uploadCloudinary.fields([
-        { name: "driver_license", maxCount: 1 },
-        { name: "adhhar_card", maxCount: 1 },
-        { name: "pan_card", maxCount: 1 },
-        { name: "bank_account", maxCount: 1 },
-        { name: "profile_picture", maxCount: 1 }
-    ]),
     UserController.register
 );
 
@@ -35,8 +28,17 @@ router.post("/send-otp", UserController.sendOTP);
 router.post("/verify-otp", UserController.verifyOTP);
 
 router.get('/users', auth, UserController.index);
-router.get('/edit-user/:id', auth, UserController.edit);
+router.get('/edit-user', auth, UserController.edit);
+router.post('/update-user-details', auth,
+    uploadCloudinary.fields([
+        { name: "driver_license", maxCount: 1 },
+        { name: "adhhar_card", maxCount: 1 },
+        { name: "pan_card", maxCount: 1 },
+        { name: "bank_account", maxCount: 1 },
+        { name: "profile_picture", maxCount: 1 }
+    ]), UserController.updateUserDetails);
 router.get('/get-me', auth, UserController.getLoginUser);
+router.get('/profile-status', auth, UserController.getProfileStatus);
 
 /*
 |--------------------------------------------------------------------------

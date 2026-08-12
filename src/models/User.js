@@ -73,6 +73,7 @@ class User {
                 u.email,
                 u.phone,
                 u.role,
+                u.is_verified,
                 ud.city,
                 ud.state,
                 ud.country,
