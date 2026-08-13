@@ -1,27 +1,25 @@
 // tasks/expireRidesTask.js
 const db = require("../config/db");
-const {
-  sendUserNotification,
-  NOTIFICATION_TYPES,
-} = require("../utils/notificationService");
-// const paymentService = require("../services/paymentService");
+const { sendUserNotification } = require("../utils/notificationService");
 
 const handleExpiredRides = async () => {
-  const connection = await db.getConnection();
+  let connection;
 
   // Data containers for processing side-effects after DB commit
   let ridesToNotify = [];
   let bookingsToProcess = [];
 
   try {
+    connection = await db.getConnection();
     await connection.beginTransaction();
 
-    // 1. Fetch expired rides using an indexed query condition
+    // 1. Combine ride_date and departure_time into a DATETIME for comparison
+    // Matches status = 'scheduled' and departure time older than 6 hours
     const [expiredRides] = await connection.query(`
-      SELECT id, driver_id, departure_time 
+      SELECT id, driver_id, ride_date, departure_time 
       FROM rides 
-      WHERE status = 'PUBLISHED' 
-        AND departure_time <= NOW() - INTERVAL 6 HOUR
+      WHERE status = 'scheduled' 
+        AND TIMESTAMP(ride_date, departure_time) <= NOW() - INTERVAL 6 HOUR
       FOR UPDATE
     `);
 
@@ -32,79 +30,62 @@ const handleExpiredRides = async () => {
 
     const expiredRideIds = expiredRides.map((r) => r.id);
 
-    // 2. Bulk update all expired rides
+    // 2. Bulk update expired rides
     await connection.query(
-      `UPDATE rides SET status = 'EXPIRED' WHERE id IN (?)`,
-      [expiredRideIds],
+      `UPDATE rides SET status = 'cancelled', updated_at = NOW() WHERE id IN (?)`,
+      [expiredRideIds]
     );
 
-    // 3. Fetch all affected bookings for these rides
+    // 3. Fetch affected bookings
     const [bookings] = await connection.query(
       `
-      SELECT id, ride_id, passenger_id, payment_intent_id, fare_amount 
+      SELECT id, ride_id, passenger_id, total_price 
       FROM ride_bookings 
-      WHERE ride_id IN (?) AND status IN ('BOOKED', 'CONFIRMED')
+      WHERE ride_id IN (?) AND status IN ('pending', 'accepted', 'confirmed')
       FOR UPDATE
     `,
-      [expiredRideIds],
+      [expiredRideIds]
     );
 
     if (bookings.length > 0) {
       const bookingIds = bookings.map((b) => b.id);
 
-      // 4. Bulk update all bookings to EXPIRED_REFUNDED
+      // 4. Bulk update bookings to cancelled
       await connection.query(
-        `UPDATE ride_bookings SET status = 'EXPIRED_REFUNDED' WHERE id IN (?)`,
-        [bookingIds],
+        `UPDATE ride_bookings SET status = 'cancelled', cancel_reason = 'RIDE_EXPIRED_DRIVER_NO_SHOW', cancelled_at = NOW() WHERE id IN (?)`,
+        [bookingIds]
       );
     }
 
-    // Commit database changes immediately so locks are released!
+    // Commit DB changes so locks are released
     await connection.commit();
 
-    // Store data to process external services outside transaction
     ridesToNotify = expiredRides;
     bookingsToProcess = bookings;
   } catch (error) {
-    await connection.rollback();
-    console.error("Error during DB transaction in expireRidesTask:", error);
-    return; // Exit early if DB operations failed
+    if (connection) await connection.rollback();
+    console.error("❌ [CRON ERROR] DB transaction in expireRidesTask failed:", error);
+    return;
   } finally {
-    connection.release();
+    if (connection) connection.release();
   }
 
   // =========================================================
-  // SIDE-EFFECTS (Refunds & Notifications) - RUN OUTSIDE LOCKS
+  // SIDE-EFFECTS (Notifications) - RUN OUTSIDE LOCKS
   // =========================================================
 
-  // 5. Process Refunds & Passenger Notifications
+  // 5. Notify Passengers
   for (const booking of bookingsToProcess) {
     try {
-      // Trigger Gateway Refund (Uncomment when payment service is ready)
-      /*
-      if (booking.payment_intent_id) {
-        await paymentService.processRefund({
-          paymentIntentId: booking.payment_intent_id,
-          amount: booking.fare_amount,
-          reason: "RIDE_EXPIRED_DRIVER_NO_SHOW",
-        });
-      }
-      */
-
-      // Notify Passenger safely
       await sendUserNotification({
         userId: booking.passenger_id,
-        type: NOTIFICATION_TYPES.RIDE_CANCELLED,
-        title: "Ride Expired & Refund Issued",
-        message:
-          "The driver did not start the ride. A full refund has been initiated.",
+        type: "RIDE_CANCELLED",
+        title: "Ride Expired & Cancelled",
+        message: "The driver did not start the ride on time. It has been automatically cancelled.",
         data: { rideId: booking.ride_id, bookingId: booking.id },
       });
     } catch (err) {
-      console.error(
-        `Failed to process refund/notification for booking ${booking.id}:`,
-        err,
-      );
+      console.error(`Failed to notify passenger for booking ${booking.id}:`, err);
     }
   }
 
@@ -113,17 +94,13 @@ const handleExpiredRides = async () => {
     try {
       await sendUserNotification({
         userId: ride.driver_id,
-        type: NOTIFICATION_TYPES.RIDE_CANCELLED,
+        type: "RIDE_CANCELLED",
         title: "Ride Cancelled due to Inactivity",
-        message:
-          "You did not start your scheduled ride. It has been marked as expired.",
+        message: "You did not start your scheduled ride on time. It has been marked as cancelled.",
         data: { rideId: ride.id },
       });
     } catch (err) {
-      console.error(
-        `Failed to notify driver ${ride.driver_id} for ride ${ride.id}:`,
-        err,
-      );
+      console.error(`Failed to notify driver ${ride.driver_id} for ride ${ride.id}:`, err);
     }
   }
 };

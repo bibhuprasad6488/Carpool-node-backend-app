@@ -11,7 +11,7 @@ module.exports = {
         origin: allowedOrigins,
         credentials: true,
       },
-      transports: ["websocket", "polling"], // Allow polling fallback for connection resilience
+      transports: ["websocket", "polling"],
     });
 
     io.on("connection", (socket) => {

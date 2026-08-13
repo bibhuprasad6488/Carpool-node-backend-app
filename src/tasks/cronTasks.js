@@ -2,7 +2,6 @@ const cron = require("node-cron");
 const { handleExpiredRides } = require("./expireRidesTask");
 
 const initCronJobs = () => {
-  // Runs every 15 minutes
   cron.schedule("*/15 * * * *", async () => {
     console.log("⏰ [CRON] Checking for expired rides...");
     try {

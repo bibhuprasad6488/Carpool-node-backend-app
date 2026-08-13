@@ -5,6 +5,7 @@ const logger = require("../config/logger");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const db = require("../config/db");
+const { sendUserNotification } = require("../utils/notificationService");
 // const transporter = require("../config/mail");
 const APP_URL = process.env.APP_URL;
 
@@ -57,9 +58,7 @@ exports.edit = async (req, res) => {
       const value = user[field];
 
       return (
-        value !== null &&
-        value !== undefined &&
-        String(value).trim() !== ""
+        value !== null && value !== undefined && String(value).trim() !== ""
       );
     });
 
@@ -97,12 +96,7 @@ exports.register = async (req, res) => {
   const connection = await db.getConnection();
 
   try {
-    const {
-      name,
-      email,
-      phone,
-      password, role_id
-    } = req.body;
+    const { name, email, phone, password, role_id } = req.body;
 
     // Basic Validations
     if (!name || !email || !password || !role_id) {
@@ -144,6 +138,16 @@ exports.register = async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: "7d" },
     );
+
+    sendUserNotification({
+      userId: userId,
+      type: "LOGIN_SUCCESS",
+      title: "New Login Detected",
+      message: `You successfully logged in. If this wasn't you, please secure your account immediately.`,
+      data: {
+        user: userData,
+      },
+    });
 
     return res.status(201).json({
       status: "success",
@@ -187,18 +191,30 @@ exports.updateUserDetails = async (req, res) => {
             FROM user_details
             WHERE user_id = ?
             LIMIT 1`,
-      [userId]
+      [userId],
     );
 
     // Keep existing file URLs if no new file is uploaded
-    const driver_license = req.files?.driver_license?.[0]?.path ?? existingDetails[0]?.driver_license ?? null;
-    const adhhar_card = req.files?.adhhar_card?.[0]?.path ?? existingDetails[0]?.adhhar_card ?? null;
-    const pan_card = req.files?.pan_card?.[0]?.path ?? existingDetails[0]?.pan_card ?? null;
-    const bank_account = req.files?.bank_account?.[0]?.path ?? existingDetails[0]?.bank_account ?? null;
-    const profile_picture = req.files?.profile_picture?.[0]?.path ?? existingDetails[0]?.profile_picture ?? null;
+    const driver_license =
+      req.files?.driver_license?.[0]?.path ??
+      existingDetails[0]?.driver_license ??
+      null;
+    const adhhar_card =
+      req.files?.adhhar_card?.[0]?.path ??
+      existingDetails[0]?.adhhar_card ??
+      null;
+    const pan_card =
+      req.files?.pan_card?.[0]?.path ?? existingDetails[0]?.pan_card ?? null;
+    const bank_account =
+      req.files?.bank_account?.[0]?.path ??
+      existingDetails[0]?.bank_account ??
+      null;
+    const profile_picture =
+      req.files?.profile_picture?.[0]?.path ??
+      existingDetails[0]?.profile_picture ??
+      null;
 
     if (existingDetails.length > 0) {
-
       // Update existing details
       await connection.query(
         `UPDATE user_details
@@ -235,11 +251,9 @@ exports.updateUserDetails = async (req, res) => {
           bank_account,
           profile_picture,
           userId,
-        ]
+        ],
       );
-
     } else {
-
       // Create user details
       await connection.query(
         `INSERT INTO user_details
@@ -279,7 +293,7 @@ exports.updateUserDetails = async (req, res) => {
           pan_card,
           bank_account,
           profile_picture,
-        ]
+        ],
       );
     }
 
@@ -289,7 +303,6 @@ exports.updateUserDetails = async (req, res) => {
       status: "success",
       message: "Profile updated successfully",
     });
-
   } catch (err) {
     await connection.rollback();
 
@@ -299,7 +312,6 @@ exports.updateUserDetails = async (req, res) => {
       status: "error",
       message: err.message,
     });
-
   } finally {
     connection.release();
   }
@@ -601,9 +613,7 @@ exports.getProfileStatus = async (req, res) => {
       const value = userDetails[field];
 
       return (
-        value !== null &&
-        value !== undefined &&
-        String(value).trim() !== ""
+        value !== null && value !== undefined && String(value).trim() !== ""
       );
     });
 
@@ -617,7 +627,6 @@ exports.getProfileStatus = async (req, res) => {
         isVerified,
       },
     });
-
   } catch (error) {
     logger.error(error);
 
