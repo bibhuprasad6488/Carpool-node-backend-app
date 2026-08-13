@@ -134,6 +134,8 @@ exports.register = async (req, res) => {
       [name, email, phone, hashedPassword, role_id],
     );
 
+    // const [userResult] = await connection.query(`INSERT INTO users    (name, email, phone, password, role, created_at, updated_at)    VALUES (?, ?, ?, ?, ?, UTC_TIMESTAMP() + INTERVAL 5 HOUR + INTERVAL 30 MINUTE, UTC_TIMESTAMP() + INTERVAL 5 HOUR + INTERVAL 30 MINUTE)`, [name, email, phone, hashedPassword, role_id]);
+
     const userId = userResult.insertId;
     await connection.commit();
 
