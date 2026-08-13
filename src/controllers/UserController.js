@@ -127,6 +127,8 @@ exports.register = async (req, res) => {
     await connection.beginTransaction();
 
     // 1. Create Base User
+    await connection.query("SET time_zone = '+05:30'");
+
     const [userResult] = await connection.query(
       `INSERT INTO users (name, email, phone, password, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?, NOW(), NOW())`,
       [name, email, phone, hashedPassword, role_id],
