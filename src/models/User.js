@@ -15,6 +15,8 @@ class User {
 
   static async create(data) {
     const { name, email } = data;
+    await db.query("SET time_zone = '+05:30'");
+
     const [result] = await db.query(
       "INSERT INTO users (name, email) VALUES (?, ?)",
       [name, email],

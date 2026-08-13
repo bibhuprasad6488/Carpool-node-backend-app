@@ -26,6 +26,8 @@ class Conversation {
 
         try {
             await connection.beginTransaction();
+            await connection.query("SET time_zone = '+05:30'");
+
             const [result] = await connection.execute(
                 `INSERT INTO conversations
                 (

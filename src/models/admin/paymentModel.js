@@ -331,6 +331,8 @@ const PaymentModel = {
     reason_of_refund,
     status = "requested",
   }) {
+    await db.query("SET time_zone = '+05:30'");
+
     const [result] = await db.query(
       `INSERT INTO refunds (booking_id, refund_amount, reason_of_refund, status, created_at, updated_at) 
        VALUES (?, ?, ?, ?, NOW(), NOW())`,

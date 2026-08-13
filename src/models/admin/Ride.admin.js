@@ -149,6 +149,8 @@ LEFT JOIN vehicles v
         : JSON.stringify(route_points)
       : null;
 
+    await db.query("SET time_zone = '+05:30'");
+
     const sql = `
       INSERT INTO rides (
         driver_id, vehicle_id, source_address, source_place_id,

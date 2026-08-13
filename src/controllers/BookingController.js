@@ -105,6 +105,8 @@ exports.store = async (req, res) => {
     const totalPrice = Number(ride.price_per_seat) * Number(seats);
 
     // Create Booking
+    await connection.query("SET time_zone = '+05:30'");
+
     const [booking] = await connection.query(
       `INSERT INTO ride_bookings
             (

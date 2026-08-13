@@ -204,6 +204,8 @@ exports.updateUserDetails = async (req, res) => {
     if (existingDetails.length > 0) {
 
       // Update existing details
+    await connection.query("SET time_zone = '+05:30'");
+
       await connection.query(
         `UPDATE user_details
             SET
@@ -245,6 +247,8 @@ exports.updateUserDetails = async (req, res) => {
     } else {
 
       // Create user details
+    await connection.query("SET time_zone = '+05:30'");
+
       await connection.query(
         `INSERT INTO user_details
                 (

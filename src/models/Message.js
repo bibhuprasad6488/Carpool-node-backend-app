@@ -26,6 +26,8 @@ class Message {
 
     static async create(data) {
 
+    await db.query("SET time_zone = '+05:30'");
+
         const [result] = await db.execute(
             `INSERT INTO messages
             (

@@ -207,6 +207,8 @@ class Ride {
         );
 
         if (sourceLocation.length === 0) {
+          await connection.query("SET time_zone = '+05:30'");
+
           await connection.execute(
             `INSERT INTO locations (name, latitude, longitude, google_place_id, created_at, updated_at)
                          VALUES (?, ?, ?, ?, NOW(), NOW())`,
@@ -222,6 +224,8 @@ class Ride {
         );
 
         if (destinationLocation.length === 0) {
+          await connection.query("SET time_zone = '+05:30'");
+
           await connection.execute(
             `INSERT INTO locations (name, latitude, longitude, google_place_id, created_at, updated_at)
                          VALUES (?, ?, ?, ?, NOW(), NOW())`,
