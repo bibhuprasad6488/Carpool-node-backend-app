@@ -3,7 +3,8 @@ const mysql = require('mysql2/promise');
 const dbConfig = {
     waitForConnections: true,
     connectionLimit: 10,
-    timezone: '+05:30'
+    timezone: '+05:30',
+    dateStrings: true
 };
 
 if (process.env.NODE_ENV === 'local') {
