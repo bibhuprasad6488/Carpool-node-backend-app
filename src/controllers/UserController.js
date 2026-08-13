@@ -23,7 +23,7 @@ exports.index = async (req, res) => {
 
 exports.edit = async (req, res) => {
   try {
-    const user = await User.findById(req.params.id);
+    const user = await User.getUserWithDetails(req.user.id);
     if (!user) {
       return res.status(404).json({
         status: "error",
@@ -31,6 +31,41 @@ exports.edit = async (req, res) => {
       });
     }
 
+    // Required profile fields/documents
+    const requiredFields = [
+      "city",
+      "state",
+      "country",
+      "postal_code",
+      "address",
+
+      "bank_account_holder",
+      "bank_account_number",
+      "bank_account_ifsc",
+      "bank_name",
+
+      "driver_license",
+      "adhhar_card",
+      "pan_card",
+      "bank_account",
+
+      "profile_picture",
+    ];
+
+    // Check whether all required fields are populated
+    const profileCompleted = requiredFields.every((field) => {
+      const value = user[field];
+
+      return (
+        value !== null &&
+        value !== undefined &&
+        String(value).trim() !== ""
+      );
+    });
+
+    user.profileCompleted = profileCompleted;
+    // Verification status
+    user.isVerified = String(user.is_verified) === "1";
     return res.json(user);
   } catch (error) {
     // console.error(error);
@@ -66,17 +101,7 @@ exports.register = async (req, res) => {
       name,
       email,
       phone,
-      password,
-      role_id,
-      city,
-      state,
-      country,
-      postal_code,
-      address,
-      bank_account_holder,
-      bank_account_number,
-      bank_account_ifsc,
-      bank_branch_name,
+      password, role_id
     } = req.body;
 
     // Basic Validations
@@ -108,47 +133,9 @@ exports.register = async (req, res) => {
     );
 
     const userId = userResult.insertId;
-
-    // 2. Extract Cloudinary Web URLs from req.files
-    // req.files[field][0].path contains the full "https://res.cloudinary.com/..." URL
-    const driver_license = req.files?.driver_license?.[0]?.path || null;
-    const adhhar_card = req.files?.adhhar_card?.[0]?.path || null;
-    const pan_card = req.files?.pan_card?.[0]?.path || null;
-    const bank_account = req.files?.bank_account?.[0]?.path || null;
-    const profile_picture = req.files?.profile_picture?.[0]?.path || null;
-
-    // 3. Save directly into user_details
-    await connection.query(
-      `INSERT INTO user_details
-            (
-                user_id, city, state, country, postal_code, address,
-                bank_account_holder, bank_account_number, bank_account_ifsc, bank_name,
-                driver_license, adhhar_card, pan_card, bank_account, profile_picture,
-                created_at, updated_at
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
-      [
-        userId,
-        city,
-        state,
-        country,
-        postal_code,
-        address,
-        bank_account_holder,
-        bank_account_number,
-        bank_account_ifsc,
-        bank_branch_name,
-        driver_license,
-        adhhar_card,
-        pan_card,
-        bank_account,
-        profile_picture,
-      ],
-    );
-
     await connection.commit();
 
-    // 4. Fetch Details
+    // 2. Fetch Details
     const userData = await User.getUserWithDetails(userId);
     const registeredUser = userData;
 
@@ -174,6 +161,149 @@ exports.register = async (req, res) => {
   }
 };
 
+exports.updateUserDetails = async (req, res) => {
+  const connection = await db.getConnection();
+
+  try {
+    const {
+      city,
+      state,
+      country,
+      postal_code,
+      address,
+      bank_account_holder,
+      bank_account_number,
+      bank_account_ifsc,
+      bank_branch_name,
+    } = req.body;
+
+    const userId = req.user.id;
+
+    await connection.beginTransaction();
+
+    // Get existing user details
+    const [existingDetails] = await connection.query(
+      `SELECT *
+            FROM user_details
+            WHERE user_id = ?
+            LIMIT 1`,
+      [userId]
+    );
+
+    // Keep existing file URLs if no new file is uploaded
+    const driver_license = req.files?.driver_license?.[0]?.path ?? existingDetails[0]?.driver_license ?? null;
+    const adhhar_card = req.files?.adhhar_card?.[0]?.path ?? existingDetails[0]?.adhhar_card ?? null;
+    const pan_card = req.files?.pan_card?.[0]?.path ?? existingDetails[0]?.pan_card ?? null;
+    const bank_account = req.files?.bank_account?.[0]?.path ?? existingDetails[0]?.bank_account ?? null;
+    const profile_picture = req.files?.profile_picture?.[0]?.path ?? existingDetails[0]?.profile_picture ?? null;
+
+    if (existingDetails.length > 0) {
+
+      // Update existing details
+      await connection.query(
+        `UPDATE user_details
+            SET
+              city = ?,
+              state = ?,
+              country = ?,
+              postal_code = ?,
+              address = ?,
+              bank_account_holder = ?,
+              bank_account_number = ?,
+              bank_account_ifsc = ?,
+              bank_name = ?,
+              driver_license = ?,
+              adhhar_card = ?,
+              pan_card = ?,
+              bank_account = ?,
+              profile_picture = ?,
+              updated_at = NOW()
+              WHERE user_id = ?`,
+        [
+          city,
+          state,
+          country,
+          postal_code,
+          address,
+          bank_account_holder,
+          bank_account_number,
+          bank_account_ifsc,
+          bank_branch_name,
+          driver_license,
+          adhhar_card,
+          pan_card,
+          bank_account,
+          profile_picture,
+          userId,
+        ]
+      );
+
+    } else {
+
+      // Create user details
+      await connection.query(
+        `INSERT INTO user_details
+                (
+                  user_id,
+                  city,
+                  state,
+                  country,
+                  postal_code,
+                  address,
+                  bank_account_holder,
+                  bank_account_number,
+                  bank_account_ifsc,
+                  bank_name,
+                  driver_license,
+                  adhhar_card,
+                  pan_card,
+                  bank_account,
+                  profile_picture,
+                  created_at,
+                  updated_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+        [
+          userId,
+          city,
+          state,
+          country,
+          postal_code,
+          address,
+          bank_account_holder,
+          bank_account_number,
+          bank_account_ifsc,
+          bank_branch_name,
+          driver_license,
+          adhhar_card,
+          pan_card,
+          bank_account,
+          profile_picture,
+        ]
+      );
+    }
+
+    await connection.commit();
+
+    return res.status(200).json({
+      status: "success",
+      message: "Profile updated successfully",
+    });
+
+  } catch (err) {
+    await connection.rollback();
+
+    logger.error(err);
+
+    return res.status(500).json({
+      status: "error",
+      message: err.message,
+    });
+
+  } finally {
+    connection.release();
+  }
+};
 
 exports.checkPhone = async (req, res) => {
   try {
@@ -415,6 +545,85 @@ exports.getLoginUser = async (req, res) => {
     return res.status(500).json({
       status: "success",
       message: "Unable to fetch",
+    });
+  }
+};
+
+exports.getProfileStatus = async (req, res) => {
+  const userId = req.user.id;
+
+  try {
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        status: "error",
+        message: "User not found",
+      });
+    }
+
+    const userDetails = await User.getUserWithDetails(userId);
+
+    // No profile details found
+    if (!userDetails) {
+      return res.status(200).json({
+        status: "success",
+        data: {
+          profileCompleted: false,
+          isVerified: false,
+        },
+      });
+    }
+
+    // Required profile fields/documents
+    const requiredFields = [
+      "city",
+      "state",
+      "country",
+      "postal_code",
+      "address",
+
+      "bank_account_holder",
+      "bank_account_number",
+      "bank_account_ifsc",
+      "bank_name",
+
+      "driver_license",
+      "adhhar_card",
+      "pan_card",
+      "bank_account",
+
+      "profile_picture",
+    ];
+
+    // Check whether all required fields are populated
+    const profileCompleted = requiredFields.every((field) => {
+      const value = userDetails[field];
+
+      return (
+        value !== null &&
+        value !== undefined &&
+        String(value).trim() !== ""
+      );
+    });
+
+    // Final verification status
+    const isVerified = String(userDetails.is_verified) === "1";
+
+    return res.status(200).json({
+      status: "success",
+      data: {
+        profileCompleted,
+        isVerified,
+      },
+    });
+
+  } catch (error) {
+    logger.error(error);
+
+    return res.status(500).json({
+      status: "error",
+      message: "Unable to fetch profile status",
     });
   }
 };
