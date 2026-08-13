@@ -9,7 +9,8 @@ const storage = new CloudinaryStorage({
       req._reqTimestamp = Date.now();
     }
 
-    let identifier = "";
+    // Direct initialization removes unused initial assignment ('let identifier = ""')
+    let identifier;
     if (req.user?.id) {
       identifier = `user_${req.user.id}`;
     } else if (req.body?.email) {
@@ -19,6 +20,7 @@ const storage = new CloudinaryStorage({
       identifier = `temp_${req._reqTimestamp}`;
     }
 
+    // Determine target Cloudinary folder based on input field key
     let folderFolder = `carpool_app/documents/${identifier}`;
 
     if (file.fieldname === "profile_picture") {
@@ -26,18 +28,24 @@ const storage = new CloudinaryStorage({
     }
 
     const vehicleFields = [
-      "rc_file", "insurance_file", "front_image", 
-      "back_image", "side_image", "number_plate_image"
+      "rc_file",
+      "insurance_file",
+      "front_image",
+      "back_image",
+      "side_image",
+      "number_plate_image",
     ];
+
     if (vehicleFields.includes(file.fieldname)) {
       folderFolder = `carpool_app/vehicles/${identifier}`;
     }
 
-    const format = file.mimetype.split("/")[1] || "jpg";
+    const format = file.mimetype?.split("/")[1] || "jpg";
+    const allowedFormats = ["jpg", "jpeg", "png", "webp", "pdf"];
 
     return {
       folder: folderFolder,
-      format: ["jpg", "jpeg", "png", "webp", "pdf"].includes(format) ? format : "jpg",
+      format: allowedFormats.includes(format) ? format : "jpg",
       public_id: `${file.fieldname}_${Date.now()}`,
       resource_type: "auto",
     };
@@ -46,7 +54,7 @@ const storage = new CloudinaryStorage({
 
 const uploadCloudinary = multer({
   storage: storage,
-  limits: { fileSize: 10 * 1024 * 1024 },
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
 });
 
 module.exports = uploadCloudinary;

@@ -1,7 +1,6 @@
 // src/models/User.js
 
 const db = require("../config/db");
-const APP_URL = process.env.APP_URL;
 
 class User {
   static async getAll() {

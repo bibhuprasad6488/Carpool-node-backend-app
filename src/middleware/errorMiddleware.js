@@ -1,6 +1,6 @@
 const logger = require("../config/logger");
 
-module.exports = (err, req, res, next) => {
+module.exports = (err, req, res) => {
     logger.error({
         message: err.message || "Internal Server Error",
         stack: err.stack

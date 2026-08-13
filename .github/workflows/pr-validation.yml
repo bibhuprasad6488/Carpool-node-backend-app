@@ -1,5 +1,3 @@
-name: PR Quality Gate & Validation
-
 on:
   pull_request:
     branches:
@@ -7,9 +5,6 @@ on:
     types: [opened, synchronize, reopened, edited]
 
 jobs:
-  # -------------------------------------------------------------
-  # JOB 1: Verify PR Title Follows Conventional Commits
-  # -------------------------------------------------------------
   pr-title-check:
     name: 📝 Validate PR Title Format
     runs-on: ubuntu-latest
@@ -32,11 +27,8 @@ jobs:
             chore
           requireScope: false
 
-  # -------------------------------------------------------------
-  # JOB 2: Linting & Code Quality Check
-  # -------------------------------------------------------------
-  lint:
-    name: 🔍 Code Linting (ESLint)
+  eslint-check:
+    name: Code Linting (ESLint)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -54,11 +46,8 @@ jobs:
       - name: Run ESLint
         run: npm run lint
 
-  # -------------------------------------------------------------
-  # JOB 3: Unit Testing & Pass Verification
-  # -------------------------------------------------------------
-  test:
-    name: 🧪 Run Test Suite (Jest)
+  test-check:
+    name: Run Test Suite (Jest)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code

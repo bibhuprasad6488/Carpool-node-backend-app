@@ -88,12 +88,16 @@ router.put("/update-vehicle-data/:id", auth,
 |--------------------------------------------------------------------------
 */
 router.post("/find-rides", RideController.findRides);
+router.get('/top-corridors', RideController.getTopCorridors);
 router.get("/rides/upcoming", RideController.getUpcomingRides);
 router.post('/search-locaton', RideController.searchLocations);
 router.get("/rides", auth, RideController.index);
 router.post("/store-ride-data", auth, RideController.store);
 router.get("/edit-ride-data/:id", auth, RideController.edit);
 router.get("/get-ride-data/:id", RideController.getRideData);
+router.patch('/ride/:rideId/start', auth, RideController.startRide);
+router.patch('/ride/:rideId/complete', auth, RideController.completeRide);
+router.patch('/ride/:rideId/cancel', auth, RideController.cancelRide);
 
 /*
 |--------------------------------------------------------------------------

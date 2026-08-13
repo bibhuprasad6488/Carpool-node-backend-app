@@ -37,3 +37,19 @@ exports.getPlatformPerformance = async (req, res) => {
     });
   }
 };
+
+exports.getGrowthAnalytics = async (req, res) => {
+  try {
+    const data = await adminDashboard.getGrowthAndCorridorsData(req.query);
+    res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    console.error("Error fetching growth and corridor analytics:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};

@@ -41,6 +41,16 @@ exports.triggerSos = async (req, res) => {
     }
 
     const ride = rides[0];
+    const ALLOWED_SOS_STATUSES = ["in_progress", "ongoing", "started"];
+
+    if (!ALLOWED_SOS_STATUSES.includes(ride.status.toLowerCase())) {
+      await connection.rollback();
+      connection.release();
+      return res.status(400).json({
+        status: "error",
+        message: `Cannot trigger SOS. Ride is currently '${ride.status}'. SOS can only be triggered during active rides.`,
+      });
+    }
 
     const sosId = await SosModel.createLog(connection, {
       rideId: ride_id,
@@ -88,7 +98,7 @@ exports.triggerSos = async (req, res) => {
         sos_id: sosId,
         ride_id: ride_id,
         user_type: userType,
-        lat:latitude,
+        lat: latitude,
         long: longitude,
       },
     });

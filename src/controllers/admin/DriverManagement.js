@@ -138,6 +138,102 @@ exports.updateUserStatus = async (req, res, next) => {
     });
   } catch (error) {
     // Passes DB or execution errors to your Express error middleware
-    next(error); 
+    next(error);
+  }
+};
+
+exports.getDriverBriefDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const driver = await DriverAdminModel.getDriverBriefById(id);
+
+    if (!driver) {
+      return res.status(404).json({
+        success: false,
+        message: "Driver profile not found.",
+      });
+    }
+
+    // Build the documents array dynamically based on submitted fields
+    const documents = [];
+
+    if (driver.driver_license) {
+      documents.push({
+        id: `dl-${driver.id}`,
+        type: "dl",
+        title: "Driving License",
+        file_url: driver.driver_license,
+        status: driver.is_dl_verified || "pending",
+      });
+    }
+
+    if (driver.adhhar_card) {
+      documents.push({
+        id: `aadhaar-${driver.id}`,
+        type: "aadhaar",
+        title: "Aadhaar Card",
+        file_url: driver.adhhar_card,
+        status: driver.is_adhhar_verified || "pending",
+      });
+    }
+
+    if (driver.pan_card) {
+      documents.push({
+        id: `pan-${driver.id}`,
+        type: "pan",
+        title: "PAN Card",
+        file_url: driver.pan_card,
+        status: driver.is_pan_verified || "pending",
+      });
+    }
+
+    // Transform and map payload to match Frontend Types
+    const responsePayload = {
+      id: driver.id,
+      name: driver.name,
+      email: driver.email,
+      phone: driver.phone,
+      created_at: driver.created_at,
+      status: driver.driver_status || "pending",
+
+      // Overview stats (Aggregates can be calculated or set to defaults)
+      total_vehicles: 0,
+      total_rides: 0,
+      total_earnings: 0,
+
+      // Nested Address Details
+      address_details: driver.current_address
+        ? {
+            current_address: driver.current_address,
+            city: driver.city || "",
+            state: driver.state || "",
+            pincode: driver.pincode || "",
+          }
+        : null,
+
+      // Nested Bank & Payout Details
+      bank_details: driver.bank_account_number
+        ? {
+            account_name: driver.bank_account_holder || "",
+            account_number: driver.bank_account_number || "",
+            bank_name: driver.bank_name || "",
+            ifsc_code: driver.bank_account_ifsc || "",
+          }
+        : null,
+
+      // Nested Documents Array
+      documents: documents,
+    };
+
+    return res.status(200).json({
+      success: true,
+      data: responsePayload,
+    });
+  } catch (error) {
+    console.error("Error in getDriverDetails:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to retrieve driver details.",
+    });
   }
 };

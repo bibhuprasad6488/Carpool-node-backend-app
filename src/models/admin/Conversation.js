@@ -210,6 +210,24 @@ class Conversation {
     );
     return rows;
   }
+  static async deleteAllMessages(conversationId) {
+    const query = `DELETE FROM messages WHERE conversation_id = ?`;
+    const [result] = await db.query(query, [conversationId]);
+    return result;
+  }
+  static async deleteConversation(conversationId) {
+    // Delete messages first if foreign key cascade is not enabled
+    await db.query(`DELETE FROM messages WHERE conversation_id = ?`, [conversationId]);
+    
+    // Delete conversation row
+    const [result] = await db.query(`DELETE FROM conversations WHERE id = ?`, [conversationId]);
+    return result;
+  }
+  static async deleteMessageById(messageId) {
+    const query = `DELETE FROM messages WHERE id = ?`;
+    const [result] = await db.query(query, [messageId]);
+    return result;
+  }
 }
 
 module.exports = Conversation;
