@@ -615,6 +615,7 @@ exports.getProfileStatus = async (req, res) => {
       data: {
         profileCompleted,
         isVerified,
+        profileStatus: userDetails.status,
       },
     });
 
@@ -623,7 +624,7 @@ exports.getProfileStatus = async (req, res) => {
 
     return res.status(500).json({
       status: "error",
-      message: "Unable to fetch profile status",
+      message: error.message,
     });
   }
 };

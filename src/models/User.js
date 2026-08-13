@@ -86,7 +86,8 @@ class User {
                 ud.adhhar_card,
                 ud.pan_card,
                 ud.bank_account,
-                ud.profile_picture
+                ud.profile_picture,
+                ud.status
             FROM users u
             LEFT JOIN user_details ud
                 ON ud.user_id = u.id
