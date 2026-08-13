@@ -208,13 +208,16 @@ exports.store = async (req, res) => {
       },
     });
 
-    const user_id = req.user.id;
     sendUserNotification({
       userId: ride.driver_id,
       type: NOTIFICATION_TYPES.RIDE_BOOKED,
-      title: "New Ride Request! 🚗",
-      message: "A passenger has booked a seat on your trip.",
-      data: { ride_id, bookingId, user_id },
+      title: "New Ride Booking",
+      message: `${req.user.name || "A passenger"} booked a seat for your ride from ${ride.origin} to ${ride.destination}`,
+      data: {
+        rideId: ride.id,
+        bookingId: bookingId,
+        passengerId: req.user.id,
+      },
     });
 
     return res.json({
