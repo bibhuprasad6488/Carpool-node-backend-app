@@ -1,14 +1,13 @@
 const { validationResult } = require("express-validator");
 const ConversationManagement = require("../../models/admin/Conversation");
 const logger = require("../../config/logger");
-
-
+const { sendAdminNotification, NOTIFICATION_TYPES } = require("../../utils/notificationService");
 
 exports.createConversation = async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(422).json({ status: 'error', errors: errors.array() });
+      return res.status(422).json({ status: "error", errors: errors.array() });
     }
 
     const { booking_id, ride_id, driver_id, passenger_id } = req.body;
@@ -17,20 +16,19 @@ exports.createConversation = async (req, res) => {
       booking_id,
       ride_id,
       driver_id: Number(driver_id),
-      passenger_id: Number(passenger_id)
+      passenger_id: Number(passenger_id),
     });
 
     return res.status(201).json({
-      status: 'success',
-      message: 'Conversation created successfully',
-      data: newConversation
+      status: "success",
+      message: "Conversation created successfully",
+      data: newConversation,
     });
-
   } catch (err) {
-    console.error('Error creating conversation:', err);
+    console.error("Error creating conversation:", err);
     return res.status(500).json({
-      status: 'error',
-      message: 'Internal server error while creating conversation'
+      status: "error",
+      message: "Internal server error while creating conversation",
     });
   }
 };
@@ -38,7 +36,11 @@ exports.createConversation = async (req, res) => {
 exports.getAllConversations = async (req, res) => {
   try {
     const { page = 1, limit = 10, search } = req.query;
-    const result = await ConversationManagement.getAllConversations({ page, limit, search });
+    const result = await ConversationManagement.getAllConversations({
+      page,
+      limit,
+      search,
+    });
 
     return res.status(200).json({
       success: true,
@@ -71,7 +73,8 @@ exports.getConversationMessages2 = async (req, res) => {
       });
     }
 
-    const messages = await ConversationManagement.getMessagesByConversationId(id);
+    const messages =
+      await ConversationManagement.getMessagesByConversationId(id);
 
     return res.status(200).json({
       success: true,
@@ -118,7 +121,7 @@ exports.clearConversationMessages = async (req, res) => {
       error: error.message,
     });
   }
-}
+};
 
 exports.deleteConversation = async (req, res) => {
   try {
@@ -172,6 +175,14 @@ exports.deleteSingleMessage = async (req, res) => {
       });
     }
 
+    sendAdminNotification({
+      type: NOTIFICATION_TYPES.EMERGENCY,
+      title: "Message Deleted by Admin..!!",
+      message: `A message deleted by admin.`,
+      data: {
+        messageId: messageId 
+      },
+    });
     return res.status(200).json({
       success: true,
       message: "Message deleted successfully",

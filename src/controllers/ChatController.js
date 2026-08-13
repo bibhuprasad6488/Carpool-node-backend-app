@@ -188,7 +188,7 @@ exports.send = async (req, res) => {
       title: "New Message Recieved..!!",
       message: `New message from ${req.user.id}.`,
       data: {
-        conversation_id: conversation_id,
+        conversationId: conversation_id,
         message: newMessage,
       },
     });
