@@ -1,3 +1,6 @@
+
+//utils/ notificationService
+
 const { getIO } = require("../../socket");
 
 const NOTIFICATION_TYPES = {
@@ -45,7 +48,6 @@ const sendUserNotification = ({ userId, type, title, message, data = {} }) => {
     }
 
     const io = getIO();
-
     const payload = {
       type,
       title,
