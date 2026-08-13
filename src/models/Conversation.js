@@ -48,7 +48,7 @@ class Conversation {
 
         } catch (err) {
             await connection.rollback();
-            throw error;
+            throw err;
         } finally {
             connection.release();
         }

@@ -5,7 +5,7 @@ const logger = require("../config/logger");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const db = require("../config/db");
-const transporter = require("../config/mail");
+// const transporter = require("../config/mail");
 const APP_URL = process.env.APP_URL;
 
 exports.index = async (req, res) => {

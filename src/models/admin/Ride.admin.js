@@ -290,7 +290,7 @@ LEFT JOIN vehicles v
     return rows;
   }
 
- static async getFullRideDetailsById(rideId) {
+  static async getFullRideDetailsById(rideId) {
     // 1. Fetch main Ride, Driver, and Vehicle information
     const rideQuery = `
       SELECT 
@@ -357,10 +357,13 @@ LEFT JOIN vehicles v
 
     // 3. Calculate dynamic Occupancy & Total Revenue
     const bookedSeatsCount = rideData.total_seats - rideData.available_seats;
-    const totalRevenue = bookings.reduce((sum, b) => sum + Number(b.amount_paid), 0);
+    const totalRevenue = bookings.reduce(
+      (sum, b) => sum + Number(b.amount_paid),
+      0,
+    );
 
     // Mock Financial Breakdown (based on revenue calculations)
-    const platformFeePercentage = 0.10; // 10%
+    const platformFeePercentage = 0.1; // 10%
     const gstRate = 0.05; // 5%
     const platformFee = totalRevenue * platformFeePercentage;
     const gstTax = totalRevenue * gstRate;
@@ -383,7 +386,10 @@ LEFT JOIN vehicles v
       });
     });
 
-    if (rideData.ride_status === 'ongoing' || rideData.ride_status === 'completed') {
+    if (
+      rideData.ride_status === "ongoing" ||
+      rideData.ride_status === "completed"
+    ) {
       activityLogs.push({
         title: "Ride Started",
         description: `Driver started the trip from ${rideData.source_address}.`,
@@ -391,7 +397,7 @@ LEFT JOIN vehicles v
       });
     }
 
-    if (rideData.ride_status === 'completed') {
+    if (rideData.ride_status === "completed") {
       activityLogs.push({
         title: "Ride Completed",
         description: `Driver ended trip. Final payout queued.`,
@@ -413,11 +419,15 @@ LEFT JOIN vehicles v
         },
         dropoff: {
           location: rideData.destination_address,
-          estimated_arrival: rideData.estimated_reach_time || 'N/A',
+          estimated_arrival: rideData.estimated_reach_time || "N/A",
         },
         metrics: {
-          distance_km: rideData.distance_meters ? (rideData.distance_meters / 1000).toFixed(1) + ' km' : 'N/A',
-          duration_mins: rideData.duration_seconds ? Math.round(rideData.duration_seconds / 60) + ' mins' : 'N/A',
+          distance_km: rideData.distance_meters
+            ? (rideData.distance_meters / 1000).toFixed(1) + " km"
+            : "N/A",
+          duration_mins: rideData.duration_seconds
+            ? Math.round(rideData.duration_seconds / 60) + " mins"
+            : "N/A",
           seat_price: Number(rideData.price_per_seat),
           occupancy: `${bookedSeatsCount} / ${rideData.total_seats} seats`,
         },
@@ -460,6 +470,8 @@ LEFT JOIN vehicles v
       activity_logs: activityLogs,
     };
   }
+
+  
 }
 
 module.exports = RideManagement;

@@ -2,7 +2,6 @@ const Conversation = require("../models/Conversation");
 const Message = require("../models/Message");
 const { validationResult } = require("express-validator");
 const { getIO } = require("../../socket");
-const db = require("../config/db");
 const Ride = require("../models/Ride");
 const Vehicle = require("../models/Vehicle");
 const User = require("../models/User");

@@ -11,7 +11,7 @@ if (process.env.NODE_ENV == 'local') {
         connectionLimit: 10
     });
 } else {
-    var pool = mysql.createPool({
+    pool = mysql.createPool({
         host: process.env.DB_HOST,
         port: process.env.DB_PORT,
         user: process.env.DB_USER,

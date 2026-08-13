@@ -503,6 +503,44 @@ class UserManagement {
     return result;
   }
 
+  static async getDriverBriefById(driverId) {
+    const query = `
+      SELECT 
+        u.id,
+        u.name,
+        u.email,
+        u.phone,
+        u.created_at,
+        ud.status AS driver_status,
+        
+        -- Address Details
+        ud.address AS current_address,
+        ud.city,
+        ud.state,
+        ud.postal_code AS pincode,
+        
+        -- Verification Documents
+        ud.driver_license,
+        ud.is_dl_verified,
+        ud.adhhar_card,
+        ud.is_adhhar_verified,
+        ud.pan_card,
+        ud.is_pan_verified,
+        
+        -- Bank Account Details
+        ud.bank_account_holder,
+        ud.bank_account_number,
+        ud.bank_name,
+        ud.bank_account_ifsc
+      FROM users u
+      LEFT JOIN user_details ud ON u.id = ud.user_id
+      WHERE u.id = ?;
+    `;
+
+    const [rows] = await db.query(query, [driverId]);
+    return rows[0] || null;
+  }
+
   /**
    * Check verification statuses across all documents for a user
    */

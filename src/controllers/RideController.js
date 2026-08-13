@@ -4,7 +4,12 @@ const db = require("../config/db"); // mysql2/promise connection
 const Vehicle = require("../models/Vehicle");
 const User = require("../models/User");
 const ActivityLog = require("../models/admin/ActivityLog");
-const { sendAdminNotification, NOTIFICATION_TYPES } = require("../utils/notificationService");
+const {
+  sendAdminNotification,
+  NOTIFICATION_TYPES,
+  sendRideRoomNotification,
+} = require("../utils/notificationService");
+const { logger } = require("@rudranarayan01/logaccent");
 
 exports.index = async (req, res) => {
   try {
@@ -360,3 +365,191 @@ function rideFormatData(ride) {
     // route_points: ride.route_points
   };
 }
+
+exports.startRide = async (req, res) => {
+  try {
+    const { rideId } = req.params;
+    const driverId = req.user.id;
+
+    const ride = await Ride.findRideByIdAndDriver(rideId, driverId);
+
+    if (!ride) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Ride not found or unauthorized" });
+    }
+
+    if (ride.status === "ongoing") {
+      return res
+        .status(400)
+        .json({ success: false, message: "Ride is already ongoing" });
+    }
+
+    // Executes atomic update for both rides and ride_bookings
+    await Ride.startRideWithBookings(rideId);
+
+    // Socket real-time broadcast
+    sendRideRoomNotification({
+      rideId,
+      type: NOTIFICATION_TYPES.RIDE_STARTED,
+      title: "Ride Started 🚗",
+      message: "Your driver has started the journey. Have a safe trip!",
+      data: { rideId, driverId },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Ride started and passenger bookings updated to ongoing",
+      data: { rideId, status: "ongoing" },
+    });
+  } catch (error) {
+    console.error("[START RIDE ERROR]", error);
+    return res
+      .status(500)
+      .json({ success: false, message: "Server error while starting ride" });
+  }
+};
+
+exports.completeRide = async (req, res) => {
+  try {
+    const { rideId } = req.params;
+    const driverId = req.user.id;
+
+    const ride = await Ride.findRideByIdAndDriver(rideId, driverId);
+
+    if (!ride) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Ride not found or unauthorized" });
+    }
+
+    if (ride.status === "completed") {
+      return res
+        .status(400)
+        .json({ success: false, message: "Ride is already completed" });
+    }
+
+    if (ride.status !== "ongoing") {
+      return res.status(400).json({
+        success: false,
+        message: "Only ongoing rides can be marked as completed",
+      });
+    }
+
+    // Atomically updates rides and ride_bookings to 'completed'
+    await Ride.completeRideWithBookings(rideId);
+
+    // Socket real-time broadcast
+    sendRideRoomNotification({
+      rideId,
+      type: NOTIFICATION_TYPES.RIDE_COMPLETED,
+      title: "Ride Completed 🎉",
+      message:
+        "You have reached your destination. Hope you had a great journey!",
+      data: { rideId, driverId },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Ride and passenger bookings completed successfully",
+      data: { rideId, status: "completed" },
+    });
+  } catch (error) {
+    console.error("[COMPLETE RIDE ERROR]", error);
+    return res
+      .status(500)
+      .json({ success: false, message: "Server error while completing ride" });
+  }
+};
+
+exports.cancelRide = async (req, res) => {
+  try {
+    const { rideId } = req.params;
+    const { reason } = req.body; // Optional cancel reason from request body
+    const driverId = req.user.id;
+
+    const ride = await Ride.findRideByIdAndDriver(rideId, driverId);
+
+    if (!ride) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Ride not found or unauthorized" });
+    }
+
+    if (ride.status === "cancelled") {
+      return res
+        .status(400)
+        .json({ success: false, message: "Ride is already cancelled" });
+    }
+
+    if (ride.status === "completed") {
+      return res.status(400).json({
+        success: false,
+        message: "Completed rides cannot be cancelled",
+      });
+    }
+
+    // Atomically updates rides and ride_bookings to 'cancelled' with cancel_reason
+    await Ride.cancelRideWithBookings(rideId, reason || "Cancelled by driver");
+
+    // Socket real-time broadcast
+    sendRideRoomNotification({
+      rideId,
+      type: NOTIFICATION_TYPES.RIDE_CANCELLED,
+      title: "Opps..!! Ride Cancelled by driver.",
+      message: reason
+        ? `The driver cancelled the ride. Reason: ${reason}`
+        : "The driver has cancelled this ride.",
+      data: { rideId, reason: reason || "Driver cancelled" },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Ride and passenger bookings cancelled successfully",
+      data: { rideId, status: "cancelled" },
+    });
+  } catch (error) {
+    console.error("[CANCEL RIDE ERROR]", error);
+    return res
+      .status(500)
+      .json({ success: false, message: "Server error while cancelling ride" });
+  }
+};
+
+exports.getTopCorridors = async function (req, res) {
+  try {
+    // Optional limit query param, defaults to 5 if not provided or invalid
+    const limit = parseInt(req.query.limit, 10) || 5;
+
+    const rawCorridors = await Ride.getTopBookedCorridors(limit);
+
+    // Format output for frontend consumption
+    const topCorridors = rawCorridors.map((row) => {
+      const trips = Number(row.total_trips || 0);
+      const fare = Number(row.avg_fare || 0);
+
+      return {
+        route: row.route,
+        origin: row.origin,
+        destination: row.destination,
+        total_trips: trips,
+        volume_label: `${trips.toLocaleString("en-IN")} trips`,
+        avg_fare: fare,
+        fare_label: `₹${fare.toFixed(2)}`,
+      };
+    });
+
+    return res.status(200).json({
+      success: true,
+      count: topCorridors.length,
+      data: topCorridors,
+    });
+  } catch (error) {
+    console.error("Error fetching top corridors:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to retrieve top performing routes.",
+      error: error.message,
+    });
+  }
+};
