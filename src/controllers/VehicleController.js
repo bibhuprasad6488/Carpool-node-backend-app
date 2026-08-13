@@ -51,6 +51,7 @@ exports.allVehicleLists = async (req, res) => {
                 model: vehicle.model,
                 seats: vehicle.seats,
                 registration_number: vehicle.registration_number,
+                status: vehicle.status,
             };
         });
 
