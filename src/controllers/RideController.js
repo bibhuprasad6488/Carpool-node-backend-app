@@ -10,7 +10,6 @@ const {
   sendRideRoomNotification,
 } = require("../utils/notificationService");
 const { logger } = require("@rudranarayan01/logaccent");
-const { stageDriverPayout } = require("../services/payoutService");
 
 exports.index = async (req, res) => {
   try {
@@ -440,11 +439,6 @@ exports.completeRide = async (req, res) => {
     // 1. Atomically updates rides and ride_bookings to 'completed'
     await Ride.completeRideWithBookings(rideId);
 
-    // 2. STAGE DRIVER PAYOUT (Non-blocking background call)
-    stageDriverPayout(rideId).catch((err) => {
-      logger.success(`[PAYOUT STAGING FAILED] Ride ID ${rideId}:`, err.message);
-    });
-
     // 3. Socket real-time broadcast
     sendRideRoomNotification({
       rideId,
@@ -495,8 +489,10 @@ exports.cancelRide = async (req, res) => {
       });
     }
 
+    const cancelCode = "CANCEL_BY_DRIVER";
+
     // Atomically updates rides and ride_bookings to 'cancelled' with cancel_reason
-    await Ride.cancelRideWithBookings(rideId, reason || "Cancelled by driver");
+    await Ride.cancelRideWithBookings(rideId, reason, cancelCode || "Cancelled by driver");
 
     // Socket real-time broadcast
     sendRideRoomNotification({
