@@ -23,11 +23,15 @@ const corsOptions = {
 
     const sanitizedOrigin = origin.replace(/\/$/, "");
 
-    if (ALLOWED_ORIGINS.includes(sanitizedOrigin)) {
+    const isAllowed =
+      ALLOWED_ORIGINS.includes(sanitizedOrigin) ||
+      /\.vercel\.app$/.test(sanitizedOrigin);
+
+    if (isAllowed) {
       return callback(null, true);
     } else {
       console.error(`[CORS Blocked] Origin: ${origin}`);
-      return callback(new Error("Not allowed by CORS"));
+      return callback(null, false);
     }
   },
   credentials: true,
@@ -63,7 +67,10 @@ app.use(errorHandler);
 const server = http.createServer(app);
 
 const socket = require("./socket");
+const initCronJobs = require("./src/tasks/cronTasks");
 socket.init(server, ALLOWED_ORIGINS);
+
+initCronJobs();
 
 const PORT = process.env.PORT || 3000;
 

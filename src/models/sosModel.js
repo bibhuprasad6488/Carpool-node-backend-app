@@ -5,6 +5,8 @@ class SosModel {
     connection,
     { rideId, userId, userType, latitude, longitude },
   ) {
+    await connection.query("SET time_zone = '+05:30'");
+
     const query = `
       INSERT INTO sos_logs (ride_id, user_id, user_type, latitude, longitude, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, NOW(), NOW())

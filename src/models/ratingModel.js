@@ -25,6 +25,8 @@ class RatingModel {
     connection,
     { rideId, bookingId, passengerId, rating, review },
   ) {
+    await connection.query("SET time_zone = '+05:30'");
+
     const query = `
       INSERT INTO ratings (ride_id, booking_id, passenger_id, rating, review, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, NOW(), NOW())

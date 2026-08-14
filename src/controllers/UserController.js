@@ -5,6 +5,7 @@ const logger = require("../config/logger");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const db = require("../config/db");
+const { sendUserNotification } = require("../utils/notificationService");
 // const transporter = require("../config/mail");
 const APP_URL = process.env.APP_URL;
 
@@ -57,9 +58,7 @@ exports.edit = async (req, res) => {
       const value = user[field];
 
       return (
-        value !== null &&
-        value !== undefined &&
-        String(value).trim() !== ""
+        value !== null && value !== undefined && String(value).trim() !== ""
       );
     });
 
@@ -97,12 +96,7 @@ exports.register = async (req, res) => {
   const connection = await db.getConnection();
 
   try {
-    const {
-      name,
-      email,
-      phone,
-      password, role_id
-    } = req.body;
+    const { name, email, phone, password, role_id } = req.body;
 
     // Basic Validations
     if (!name || !email || !password || !role_id) {
@@ -127,10 +121,14 @@ exports.register = async (req, res) => {
     await connection.beginTransaction();
 
     // 1. Create Base User
+    await connection.query("SET time_zone = '+05:30'");
+
     const [userResult] = await connection.query(
       `INSERT INTO users (name, email, phone, password, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?, NOW(), NOW())`,
       [name, email, phone, hashedPassword, role_id],
     );
+
+    // const [userResult] = await connection.query(`INSERT INTO users    (name, email, phone, password, role, created_at, updated_at)    VALUES (?, ?, ?, ?, ?, UTC_TIMESTAMP() + INTERVAL 5 HOUR + INTERVAL 30 MINUTE, UTC_TIMESTAMP() + INTERVAL 5 HOUR + INTERVAL 30 MINUTE)`, [name, email, phone, hashedPassword, role_id]);
 
     const userId = userResult.insertId;
     await connection.commit();
@@ -144,6 +142,16 @@ exports.register = async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: "7d" },
     );
+
+    sendUserNotification({
+      userId: userId,
+      type: "LOGIN_SUCCESS",
+      title: "New Login Detected",
+      message: `You successfully logged in. If this wasn't you, please secure your account immediately.`,
+      data: {
+        user: userData,
+      },
+    });
 
     return res.status(201).json({
       status: "success",
@@ -187,19 +195,33 @@ exports.updateUserDetails = async (req, res) => {
             FROM user_details
             WHERE user_id = ?
             LIMIT 1`,
-      [userId]
+      [userId],
     );
 
     // Keep existing file URLs if no new file is uploaded
-    const driver_license = req.files?.driver_license?.[0]?.path ?? existingDetails[0]?.driver_license ?? null;
-    const adhhar_card = req.files?.adhhar_card?.[0]?.path ?? existingDetails[0]?.adhhar_card ?? null;
-    const pan_card = req.files?.pan_card?.[0]?.path ?? existingDetails[0]?.pan_card ?? null;
-    const bank_account = req.files?.bank_account?.[0]?.path ?? existingDetails[0]?.bank_account ?? null;
-    const profile_picture = req.files?.profile_picture?.[0]?.path ?? existingDetails[0]?.profile_picture ?? null;
+    const driver_license =
+      req.files?.driver_license?.[0]?.path ??
+      existingDetails[0]?.driver_license ??
+      null;
+    const adhhar_card =
+      req.files?.adhhar_card?.[0]?.path ??
+      existingDetails[0]?.adhhar_card ??
+      null;
+    const pan_card =
+      req.files?.pan_card?.[0]?.path ?? existingDetails[0]?.pan_card ?? null;
+    const bank_account =
+      req.files?.bank_account?.[0]?.path ??
+      existingDetails[0]?.bank_account ??
+      null;
+    const profile_picture =
+      req.files?.profile_picture?.[0]?.path ??
+      existingDetails[0]?.profile_picture ??
+      null;
 
     if (existingDetails.length > 0) {
-
       // Update existing details
+    await connection.query("SET time_zone = '+05:30'");
+
       await connection.query(
         `UPDATE user_details
             SET
@@ -235,12 +257,12 @@ exports.updateUserDetails = async (req, res) => {
           bank_account,
           profile_picture,
           userId,
-        ]
+        ],
       );
-
     } else {
-
       // Create user details
+    await connection.query("SET time_zone = '+05:30'");
+
       await connection.query(
         `INSERT INTO user_details
                 (
@@ -279,7 +301,7 @@ exports.updateUserDetails = async (req, res) => {
           pan_card,
           bank_account,
           profile_picture,
-        ]
+        ],
       );
     }
 
@@ -289,7 +311,6 @@ exports.updateUserDetails = async (req, res) => {
       status: "success",
       message: "Profile updated successfully",
     });
-
   } catch (err) {
     await connection.rollback();
 
@@ -299,7 +320,6 @@ exports.updateUserDetails = async (req, res) => {
       status: "error",
       message: err.message,
     });
-
   } finally {
     connection.release();
   }
@@ -601,9 +621,7 @@ exports.getProfileStatus = async (req, res) => {
       const value = userDetails[field];
 
       return (
-        value !== null &&
-        value !== undefined &&
-        String(value).trim() !== ""
+        value !== null && value !== undefined && String(value).trim() !== ""
       );
     });
 
@@ -615,15 +633,15 @@ exports.getProfileStatus = async (req, res) => {
       data: {
         profileCompleted,
         isVerified,
+        profileStatus: userDetails.status,
       },
     });
-
   } catch (error) {
     logger.error(error);
 
     return res.status(500).json({
       status: "error",
-      message: "Unable to fetch profile status",
+      message: error.message,
     });
   }
 };

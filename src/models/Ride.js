@@ -207,6 +207,8 @@ class Ride {
         );
 
         if (sourceLocation.length === 0) {
+          await connection.query("SET time_zone = '+05:30'");
+
           await connection.execute(
             `INSERT INTO locations (name, latitude, longitude, google_place_id, created_at, updated_at)
                          VALUES (?, ?, ?, ?, NOW(), NOW())`,
@@ -222,6 +224,8 @@ class Ride {
         );
 
         if (destinationLocation.length === 0) {
+          await connection.query("SET time_zone = '+05:30'");
+
           await connection.execute(
             `INSERT INTO locations (name, latitude, longitude, google_place_id, created_at, updated_at)
                          VALUES (?, ?, ?, ?, NOW(), NOW())`,
@@ -389,9 +393,7 @@ class Ride {
       driver_email: ride.driver_email,
       driver_phone: ride.driver_phone,
 
-      driver_profile_picture: ride.profile_picture
-        ? `${process.env.APP_URL}/uploads/user/${ride.profile_picture}`
-        : "",
+      driver_profile_picture: formatProfileUrl(ride.profile_picture),
 
       driver_is_verified: ride.is_verified,
 

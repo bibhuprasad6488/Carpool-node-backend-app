@@ -69,6 +69,8 @@ class Conversation {
   // }
 
   static async create({ booking_id, ride_id, driver_id, passenger_id }) {
+    await db.query("SET time_zone = '+05:30'");
+
     const query = `
     INSERT INTO conversations (booking_id, ride_id, driver_id, passenger_id, created_at, updated_at)
     VALUES (?, ?, ?, ?, NOW(), NOW())
@@ -85,6 +87,8 @@ class Conversation {
   static async findOrCreate({ booking_id, ride_id, driver_id, passenger_id }) {
     const existing = await this.findByBookingId(booking_id);
     if (existing) return existing;
+
+    await db.query("SET time_zone = '+05:30'");
 
     const query = `
       INSERT INTO conversations (booking_id, ride_id, driver_id, passenger_id, created_at, updated_at)
@@ -218,7 +222,7 @@ class Conversation {
   static async deleteConversation(conversationId) {
     // Delete messages first if foreign key cascade is not enabled
     await db.query(`DELETE FROM messages WHERE conversation_id = ?`, [conversationId]);
-    
+
     // Delete conversation row
     const [result] = await db.query(`DELETE FROM conversations WHERE id = ?`, [conversationId]);
     return result;

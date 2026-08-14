@@ -105,6 +105,8 @@ exports.store = async (req, res) => {
     const totalPrice = Number(ride.price_per_seat) * Number(seats);
 
     // Create Booking
+    await connection.query("SET time_zone = '+05:30'");
+
     const [booking] = await connection.query(
       `INSERT INTO ride_bookings
             (
@@ -208,13 +210,16 @@ exports.store = async (req, res) => {
       },
     });
 
-    const user_id = req.user.id;
     sendUserNotification({
       userId: ride.driver_id,
       type: NOTIFICATION_TYPES.RIDE_BOOKED,
-      title: "New Ride Request! 🚗",
-      message: "A passenger has booked a seat on your trip.",
-      data: { ride_id, bookingId, user_id },
+      title: "New Ride Booking",
+      message: `${req.user.name || "A passenger"} booked a seat for your ride from ${ride.origin} to ${ride.destination}`,
+      data: {
+        rideId: ride.id,
+        bookingId: bookingId,
+        passengerId: req.user.id,
+      },
     });
 
     return res.json({
@@ -684,3 +689,36 @@ function rideFormatData(ride) {
     // route_points: ride.route_points
   };
 }
+
+
+exports.getMyBookedRides = async (req, res, next) => {
+  try {
+    const passengerId = req.user?.id || req.query.passengerId;
+
+    if (!passengerId) {
+      return res.status(400).json({
+        success: false,
+        message: "Passenger ID is required",
+      });
+    }
+
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 10;
+
+    const { bookings, pagination } = await Booking.getPassengerBookings(
+      passengerId,
+      page,
+      limit
+    );
+
+    return res.status(200).json({
+      success: true,
+      count: bookings.length,
+      pagination,
+      data: bookings,
+    });
+  } catch (error) {
+    console.error("[GET_PASSENGER_BOOKINGS_ERROR]", error);
+    next(error);
+  }
+};
