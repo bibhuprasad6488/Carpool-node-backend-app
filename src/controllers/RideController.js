@@ -489,8 +489,10 @@ exports.cancelRide = async (req, res) => {
       });
     }
 
+    const cancelCode = "CANCEL_BY_DRIVER";
+
     // Atomically updates rides and ride_bookings to 'cancelled' with cancel_reason
-    await Ride.cancelRideWithBookings(rideId, reason || "Cancelled by driver");
+    await Ride.cancelRideWithBookings(rideId, reason, cancelCode || "Cancelled by driver");
 
     // Socket real-time broadcast
     sendRideRoomNotification({

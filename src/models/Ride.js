@@ -604,7 +604,7 @@ class Ride {
     }
   }
 
-  static async cancelRideWithBookings(rideId, cancelReason = null) {
+  static async cancelRideWithBookings(rideId, cancelReason = null, cancelCode) {
     const connection = await db.getConnection();
     try {
       await connection.beginTransaction();
@@ -618,9 +618,9 @@ class Ride {
       // 2. Update active bookings to cancelled
       await connection.query(
         `UPDATE ride_bookings 
-       SET status = 'cancelled', cancelled_at = NOW(), cancel_reason = ?, updated_at = NOW() 
+       SET status = 'cancelled', cancelled_at = NOW(), cancel_reason = ?, reason_of_cancel =?, updated_at = NOW() 
        WHERE ride_id = ? AND status NOT IN ('cancelled', 'completed')`,
-        [cancelReason, rideId],
+        [cancelReason, cancelCode, rideId ],
       );
 
       await connection.commit();
