@@ -196,6 +196,8 @@ LEFT JOIN vehicles v
     if (!updateFields || Object.keys(updateFields).length === 0) {
       throw new Error("No fields provided for update");
     }
+
+    // Handle route_points stringification if passed
     if (
       updateFields.route_points &&
       typeof updateFields.route_points !== "string"
@@ -207,21 +209,21 @@ LEFT JOIN vehicles v
     const values = [];
 
     Object.keys(updateFields).forEach((key) => {
-      setClauses.push(`${key} = ?`);
+      setClauses.push(`\`${key}\` = ?`);
       values.push(updateFields[key]);
     });
 
     setClauses.push("updated_at = NOW()");
-
     values.push(rideId);
 
     const sql = `
-      UPDATE rides 
-      SET ${setClauses.join(", ")} 
-      WHERE id = ?
-    `;
+    UPDATE rides 
+    SET ${setClauses.join(", ")} 
+    WHERE id = ?
+  `;
 
     const [result] = await db.query(sql, values);
+
     return result.affectedRows > 0;
   }
 
@@ -470,8 +472,6 @@ LEFT JOIN vehicles v
       activity_logs: activityLogs,
     };
   }
-
-  
 }
 
 module.exports = RideManagement;

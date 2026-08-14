@@ -35,6 +35,12 @@ class Booking {
       b.payment_type,
       b.created_at AS booked_at,
 
+      -- Cancellation & Expiration Metadata
+      b.cancelled_at,
+      b.cancel_reason,
+      b.reason_of_cancel,
+      COALESCE(b.cancel_reason, b.reason_of_cancel) AS display_cancel_reason,
+
       -- Ride Details
       r.id AS ride_id,
       r.source_address AS ride_source,
