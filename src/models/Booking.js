@@ -16,7 +16,6 @@ class Booking {
     );
     return rows;
   }
-
   static async getPassengerBookings(passengerId, page = 1, limit = 10) {
     const pageNum = parseInt(page, 10) || 1;
     const limitNum = parseInt(limit, 10) || 10;
@@ -54,6 +53,7 @@ class Booking {
       u.id AS driver_id,
       u.name AS driver_name,
       u.phone AS driver_phone,
+      ud.profile_picture AS driver_profile_picture,
 
       -- Vehicle Info
       v.id AS vehicle_id,
@@ -67,6 +67,7 @@ class Booking {
     FROM ride_bookings b
     INNER JOIN rides r ON b.ride_id = r.id
     INNER JOIN users u ON r.driver_id = u.id
+    LEFT JOIN user_details ud ON u.id = ud.user_id
     LEFT JOIN vehicles v ON r.vehicle_id = v.id
     WHERE b.passenger_id = ?
     ORDER BY b.created_at DESC
