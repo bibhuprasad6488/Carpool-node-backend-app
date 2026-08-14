@@ -14,7 +14,7 @@ if (process.env.NODE_ENV === 'local') {
         port: 3306,
         user: 'root',
         password: '',
-        database: 'carpool_nest'
+        database: 'carpooling'
     });
 } else {
     pool = mysql.createPool({
