@@ -46,16 +46,28 @@ class Booking {
       r.destination_lng AS ride_destination_lng,
       r.ride_date,
       r.departure_time,
+      r.duration_seconds,
       r.estimated_reach_time,
       r.status AS ride_status,
 
       -- Driver Info
       u.id AS driver_id,
       u.name AS driver_name,
-      u.phone AS driver_phone
+      u.phone AS driver_phone,
+
+      -- Vehicle Info
+      v.id AS vehicle_id,
+      v.brand AS vehicle_brand,
+      v.model AS vehicle_model,
+      v.registration_number AS vehicle_registration_number,
+      v.color AS vehicle_color,
+      v.fuel_type AS vehicle_fuel_type,
+      v.vehicle_type
+
     FROM ride_bookings b
-    JOIN rides r ON b.ride_id = r.id
-    JOIN users u ON r.driver_id = u.id
+    INNER JOIN rides r ON b.ride_id = r.id
+    INNER JOIN users u ON r.driver_id = u.id
+    LEFT JOIN vehicles v ON r.vehicle_id = v.id
     WHERE b.passenger_id = ?
     ORDER BY b.created_at DESC
     LIMIT ? OFFSET ?;
@@ -68,11 +80,10 @@ class Booking {
     WHERE passenger_id = ?;
   `;
 
-    // Note: mysql2 requires limit and offset parameters as numbers
     const [rows] = await db.query(dataQuery, [passengerId, limitNum, offset]);
     const [countResult] = await db.query(countQuery, [passengerId]);
 
-    const total = countResult[0].total;
+    const total = countResult[0]?.total || 0;
 
     return {
       bookings: rows,
