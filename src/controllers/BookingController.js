@@ -689,3 +689,36 @@ function rideFormatData(ride) {
     // route_points: ride.route_points
   };
 }
+
+
+exports.getMyBookedRides = async (req, res, next) => {
+  try {
+    const passengerId = req.user?.id || req.query.passengerId;
+
+    if (!passengerId) {
+      return res.status(400).json({
+        success: false,
+        message: "Passenger ID is required",
+      });
+    }
+
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 10;
+
+    const { bookings, pagination } = await Booking.getPassengerBookings(
+      passengerId,
+      page,
+      limit
+    );
+
+    return res.status(200).json({
+      success: true,
+      count: bookings.length,
+      pagination,
+      data: bookings,
+    });
+  } catch (error) {
+    console.error("[GET_PASSENGER_BOOKINGS_ERROR]", error);
+    next(error);
+  }
+};
