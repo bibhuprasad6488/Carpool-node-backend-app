@@ -6,6 +6,8 @@ class SiteSetting {
     const [rows] = await db.query('SELECT * FROM site_settings ORDER BY id ASC LIMIT 1');
     if (rows.length === 0) {
       // Initialize an empty row if none exists
+      await db.query("SET time_zone = '+05:30'");
+
       const [result] = await db.query('INSERT INTO site_settings (created_at) VALUES (NOW())');
       const [newRows] = await db.query('SELECT * FROM site_settings WHERE id = ?', [result.insertId]);
       return newRows[0];
@@ -32,7 +34,7 @@ class SiteSetting {
   // Update full site settings dynamic fields
   static async updateSettings(updateData) {
     const settings = await this.getSettings();
-    
+
     // Filter out undefined values to update only provided fields
     const fields = [];
     const values = [];

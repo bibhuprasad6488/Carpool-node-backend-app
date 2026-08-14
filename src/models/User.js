@@ -15,6 +15,8 @@ class User {
 
   static async create(data) {
     const { name, email } = data;
+    await db.query("SET time_zone = '+05:30'");
+
     const [result] = await db.query(
       "INSERT INTO users (name, email) VALUES (?, ?)",
       [name, email],
@@ -86,7 +88,8 @@ class User {
                 ud.adhhar_card,
                 ud.pan_card,
                 ud.bank_account,
-                ud.profile_picture
+                ud.profile_picture,
+                ud.status
             FROM users u
             LEFT JOIN user_details ud
                 ON ud.user_id = u.id

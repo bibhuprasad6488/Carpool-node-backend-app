@@ -13,6 +13,8 @@ class ActivityLog {
   }) {
     const createdAt = new Date().toISOString().slice(0, 19).replace("T", " ");
 
+    await db.query("SET time_zone = '+05:30'");
+
     const query = `
     INSERT INTO activity_logs 
     (user_id, action, description, entity_type, entity_id, ip_address, user_agent, status, created_at)
@@ -146,10 +148,10 @@ class ActivityLog {
   }
 
   static async clearAllLogs() {
-  const query = `TRUNCATE TABLE activity_logs`;
-  const [result] = await db.query(query);
-  return result;
-}
+    const query = `TRUNCATE TABLE activity_logs`;
+    const [result] = await db.query(query);
+    return result;
+  }
 }
 
 module.exports = ActivityLog;

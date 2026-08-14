@@ -121,10 +121,14 @@ exports.register = async (req, res) => {
     await connection.beginTransaction();
 
     // 1. Create Base User
+    await connection.query("SET time_zone = '+05:30'");
+
     const [userResult] = await connection.query(
       `INSERT INTO users (name, email, phone, password, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?, NOW(), NOW())`,
       [name, email, phone, hashedPassword, role_id],
     );
+
+    // const [userResult] = await connection.query(`INSERT INTO users    (name, email, phone, password, role, created_at, updated_at)    VALUES (?, ?, ?, ?, ?, UTC_TIMESTAMP() + INTERVAL 5 HOUR + INTERVAL 30 MINUTE, UTC_TIMESTAMP() + INTERVAL 5 HOUR + INTERVAL 30 MINUTE)`, [name, email, phone, hashedPassword, role_id]);
 
     const userId = userResult.insertId;
     await connection.commit();
@@ -216,6 +220,8 @@ exports.updateUserDetails = async (req, res) => {
 
     if (existingDetails.length > 0) {
       // Update existing details
+    await connection.query("SET time_zone = '+05:30'");
+
       await connection.query(
         `UPDATE user_details
             SET
@@ -255,6 +261,8 @@ exports.updateUserDetails = async (req, res) => {
       );
     } else {
       // Create user details
+    await connection.query("SET time_zone = '+05:30'");
+
       await connection.query(
         `INSERT INTO user_details
                 (
@@ -625,6 +633,7 @@ exports.getProfileStatus = async (req, res) => {
       data: {
         profileCompleted,
         isVerified,
+        profileStatus: userDetails.status,
       },
     });
   } catch (error) {
@@ -632,7 +641,7 @@ exports.getProfileStatus = async (req, res) => {
 
     return res.status(500).json({
       status: "error",
-      message: "Unable to fetch profile status",
+      message: error.message,
     });
   }
 };
