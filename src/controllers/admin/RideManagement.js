@@ -98,7 +98,7 @@ exports.createRide = async (req, res) => {
 exports.updateRide = async (req, res) => {
   try {
     const { id } = req.params;
-    const updateData = req.body;
+    const { status, seat, price } = req.body;
 
     if (!id) {
       return res.status(400).json({
@@ -107,10 +107,49 @@ exports.updateRide = async (req, res) => {
       });
     }
 
-    if (!updateData || Object.keys(updateData).length === 0) {
+    // Build whitelisted payload
+    const updateData = {};
+
+    if (status !== undefined) {
+      if (typeof status !== "string" || !status.trim()) {
+        return res.status(400).json({
+          status: "fail",
+          message: "Status must be a valid non-empty string.",
+        });
+      }
+      updateData.status = status.trim();
+    }
+
+    if (seat !== undefined) {
+      const seatNum = Number(seat);
+      if (isNaN(seatNum) || seatNum < 0) {
+        return res.status(400).json({
+          status: "fail",
+          message: "Seats must be a valid non-negative number.",
+        });
+      }
+      // Map frontend 'seat' key to database column name
+      updateData.available_seats = seatNum; // adjust column name if different
+    }
+
+    if (price !== undefined) {
+      const priceNum = Number(price);
+      if (isNaN(priceNum) || priceNum < 0) {
+        return res.status(400).json({
+          status: "fail",
+          message: "Price must be a valid non-negative number.",
+        });
+      }
+      // Map frontend 'price' key to database column name
+      updateData.price_per_seat = priceNum; // adjust column name if different
+    }
+
+    // Ensure at least one valid field is passed
+    if (Object.keys(updateData).length === 0) {
       return res.status(400).json({
         status: "fail",
-        message: "No update fields provided in request body",
+        message:
+          "At least one valid field (status, seat, price) must be provided.",
       });
     }
 
@@ -119,13 +158,14 @@ exports.updateRide = async (req, res) => {
     if (!updated) {
       return res.status(404).json({
         status: "fail",
-        message: "Ride not found or no changes made",
+        message: "Ride not found or no changes were made.",
       });
     }
 
     return res.status(200).json({
       status: "success",
       message: "Ride updated successfully",
+      updatedFields: Object.keys(updateData),
     });
   } catch (error) {
     console.error("Error updating ride:", error);
