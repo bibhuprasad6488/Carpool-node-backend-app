@@ -3,73 +3,89 @@ const db = require("../config/db");
 const crypto = require("crypto");
 const DriverPayout = require("../models/admin/DriverPayout.model");
 
-
-const stageDriverPayout = async (rideId) => {
-  let connection;
+const stageDriverPayout = async (rideId, existingConnection = null) => {
+  const logPrefix = `[PAYOUT STAGING | Ride ID: ${rideId}]`;
+  let connection = existingConnection;
+  let isNewTransaction = false;
 
   try {
-    connection = await db.getConnection();
-    await connection.beginTransaction();
+    if (!connection) {
+      connection = await db.getConnection();
+      await connection.beginTransaction();
+      isNewTransaction = true;
+    }
 
-    // Fetch Ride & Driver Details
+    // 1. Fetch Ride & Driver Details
+    // NOTE: If using the existing connection, the ride is already updated,
+    // so no need for FOR UPDATE if called right after completeRideWithBookings
     const [rides] = await connection.query(
-      `SELECT id, driver_id, status FROM rides WHERE id = ? FOR UPDATE`,
-      [rideId]
+      `SELECT id, driver_id, status FROM rides WHERE id = ?`,
+      [rideId],
     );
 
     if (!rides.length || rides[0].status !== "completed") {
-      throw new Error("Ride is either not found or not completed.");
+      const status = rides[0]?.status || "NOT_FOUND";
+      throw new Error(
+        `Ride invalid or incomplete (Current status: ${status}).`,
+      );
     }
 
     const ride = rides[0];
 
-    // Check if payout record already exists
-    const existingPayout = await DriverPayout.findByRideId(rideId);
-    if (existingPayout) {
-      await connection.commit();
-      return existingPayout;
+    // 2. Check if payout already exists using the same connection
+    const [existing] = await connection.query(
+      `SELECT id FROM driver_payouts WHERE ride_id = ? LIMIT 1`,
+      [rideId],
+    );
+
+    if (existing.length > 0) {
+      if (isNewTransaction) await connection.commit();
+      return existing[0];
     }
 
-    // Fetch Driver Bank Details from user_details
+    // 3. Fetch Driver Bank Details
     const [userDetails] = await connection.query(
       `SELECT bank_account_number, bank_account_ifsc FROM user_details WHERE user_id = ?`,
-      [ride.driver_id]
+      [ride.driver_id],
     );
 
     if (!userDetails.length || !userDetails[0].bank_account_number) {
-      throw new Error(`Driver (User ID: ${ride.driver_id}) has not set up bank account details.`);
+      throw new Error(
+        `Driver (User ID: ${ride.driver_id}) missing bank account details.`,
+      );
     }
 
     const { bank_account_number, bank_account_ifsc } = userDetails[0];
 
-    // Get dynamic Commission Percentage from site_settings
+    // 4. Get Commission
     const [settings] = await connection.query(
-      `SELECT commision FROM site_settings ORDER BY id ASC LIMIT 1`
+      `SELECT commision FROM site_settings ORDER BY id ASC LIMIT 1`,
     );
-
     const commissionPercent = parseFloat(settings[0]?.commision || 0);
 
-    // Calculate Gross Amount from paid bookings
+    // 5. Calculate Gross Earnings
     const [earningsResult] = await connection.query(
       `SELECT COALESCE(SUM(total_price), 0.00) AS total_gross 
        FROM ride_bookings 
        WHERE ride_id = ? AND status IN ('confirmed', 'completed') AND payment_status = 'paid'`,
-      [rideId]
+      [rideId],
     );
 
     const grossAmount = parseFloat(earningsResult[0].total_gross || 0);
 
     if (grossAmount <= 0) {
-      await connection.commit();
+      if (isNewTransaction) await connection.commit();
       return null;
     }
 
-    // Compute Platform Fee & Net Payout
-    const platformFee = parseFloat(((grossAmount * commissionPercent) / 100).toFixed(2));
+    // 6. Calculate Fees
+    const platformFee = parseFloat(
+      ((grossAmount * commissionPercent) / 100).toFixed(2),
+    );
     const netPayoutAmount = parseFloat((grossAmount - platformFee).toFixed(2));
     const payoutCode = `POUT-${Date.now()}-${crypto.randomBytes(2).toString("hex").toUpperCase()}`;
 
-    // Create payout in 'pending' status
+    // 7. Insert Driver Payout using the connection
     const payoutData = {
       payoutCode,
       rideId,
@@ -81,16 +97,27 @@ const stageDriverPayout = async (rideId) => {
       ifscCode: bank_account_ifsc,
     };
 
-    const payoutId = await DriverPayout.create(payoutData);
-    await connection.commit();
+    // Pass connection to DriverPayout.create if supported, or run query directly
+    await DriverPayout.create(payoutData, connection);
 
-    return { payoutId, ...payoutData };
+    if (isNewTransaction) {
+      await connection.commit();
+    }
+
+    console.log(
+      `✅ ${logPrefix} Successfully staged payout code: ${payoutCode}`,
+    );
+    return payoutData;
   } catch (error) {
-    if (connection) await connection.rollback();
-    console.error(`❌ [PAYOUT STAGING ERROR] Ride ID ${rideId}:`, error.message);
+    if (isNewTransaction && connection) {
+      await connection.rollback();
+    }
+    console.error(`❌ ${logPrefix} Execution failed:`, error.stack || error);
     throw error;
   } finally {
-    if (connection) connection.release();
+    if (isNewTransaction && connection) {
+      connection.release();
+    }
   }
 };
 
@@ -111,11 +138,19 @@ const executeAdminPayout = async (payoutId) => {
     }
 
     if (payout.status !== "pending" && payout.status !== "failed") {
-      throw new Error(`Payout cannot be processed in '${payout.status}' status.`);
+      throw new Error(
+        `Payout cannot be processed in '${payout.status}' status.`,
+      );
     }
 
     // Mark as processing
-    await DriverPayout.updateStatus(payoutId, "processing", null, null, connection);
+    await DriverPayout.updateStatus(
+      payoutId,
+      "processing",
+      null,
+      null,
+      connection,
+    );
     await connection.commit();
 
     // =========================================================
@@ -134,7 +169,12 @@ const executeAdminPayout = async (payoutId) => {
     const mockGatewayPayoutId = `gtw_pout_${Date.now()}`;
 
     // Mark as completed
-    await DriverPayout.updateStatus(payoutId, "completed", mockGatewayPayoutId, null);
+    await DriverPayout.updateStatus(
+      payoutId,
+      "completed",
+      mockGatewayPayoutId,
+      null,
+    );
 
     return {
       success: true,

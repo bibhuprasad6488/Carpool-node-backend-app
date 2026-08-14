@@ -3,33 +3,24 @@ const db = require("../../config/db");
 
 class DriverPayout {
   // Create pending payout record
-  static async create(payoutData) {
-    const {
-      payoutCode,
-      rideId,
-      driverId,
-      grossAmount,
-      platformFee,
-      netPayoutAmount,
-      accountNumber,
-      ifscCode,
-    } = payoutData;
+  static async create(payoutData, connection = null) {
+    const queryExecutor = connection || db;
 
     const query = `
-      INSERT INTO driver_payouts 
-        (payout_code, ride_id, driver_id, gross_amount, platform_fee, net_payout_amount, account_number, ifsc_code, status, created_at, updated_at) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW(), NOW())
-    `;
+    INSERT INTO driver_payouts 
+      (payout_code, ride_id, driver_id, gross_amount, platform_fee, net_payout_amount, account_number, ifsc_code, status, created_at, updated_at) 
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW(), NOW())
+  `;
 
-    const [result] = await db.query(query, [
-      payoutCode,
-      rideId,
-      driverId,
-      grossAmount,
-      platformFee,
-      netPayoutAmount,
-      accountNumber,
-      ifscCode,
+    const [result] = await queryExecutor.query(query, [
+      payoutData.payoutCode,
+      payoutData.rideId,
+      payoutData.driverId,
+      payoutData.grossAmount,
+      payoutData.platformFee,
+      payoutData.netPayoutAmount,
+      payoutData.accountNumber,
+      payoutData.ifscCode,
     ]);
 
     return result.insertId;
@@ -91,7 +82,11 @@ class DriverPayout {
       ${whereClause}
     `;
 
-    const [rows] = await db.query(dataQuery, [...queryParams, limitNum, offset]);
+    const [rows] = await db.query(dataQuery, [
+      ...queryParams,
+      limitNum,
+      offset,
+    ]);
     const [countResult] = await db.query(countQuery, queryParams);
 
     const total = countResult[0]?.total || 0;
@@ -108,7 +103,13 @@ class DriverPayout {
   }
 
   // Update status & payout gateway metadata
-  static async updateStatus(payoutId, status, payoutIdGateway = null, failureReason = null, connection = null) {
+  static async updateStatus(
+    payoutId,
+    status,
+    payoutIdGateway = null,
+    failureReason = null,
+    connection = null,
+  ) {
     const queryExecutor = connection || db;
     const query = `
       UPDATE driver_payouts 

@@ -201,9 +201,9 @@ router.get("/platform/commission", auth, isAdmin, getCommission);
 router.put("/platform/commission", auth, isAdmin, updateCommission);
 router.get("/platform/", auth, isAdmin, getSettings);
 
-router.get("/payouts", getPayouts);
-router.get("/payouts/:payoutId", getPayoutById);
-router.post("/payouts/:payoutId/process", processPayout);
+router.get("/payouts", auth, isAdmin, getPayouts);
+router.get("/payouts/:payoutId", auth, isAdmin, getPayoutById);
+router.post("/payouts/:payoutId/process", auth, isAdmin, processPayout);
 
 
 // router.put(

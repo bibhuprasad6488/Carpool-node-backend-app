@@ -1,4 +1,5 @@
 const db = require("../config/db");
+const { stageDriverPayout } = require("../services/payoutService");
 // const redis = require("../config/redis");
 
 const formatProfileUrl = (filePath) => {
@@ -589,6 +590,9 @@ class Ride {
        WHERE ride_id = ? AND status IN ('ongoing', 'accepted', 'confirmed')`,
         [rideId],
       );
+
+      // 3. Stage Driver Payout inside the SAME transaction
+      await stageDriverPayout(rideId, connection);
 
       await connection.commit();
       return true;
