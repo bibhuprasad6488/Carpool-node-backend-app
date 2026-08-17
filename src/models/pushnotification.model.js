@@ -148,10 +148,262 @@ const createNotification = async ({ userId, type, title, body, data = {} }) => {
   return result.insertId;
 };
 
+const getAllDevices = async ({
+  page = 1,
+  limit = 20,
+  search = "",
+  platform,
+  isActive,
+}) => {
+  const offset = (page - 1) * limit;
+
+  const conditions = [];
+  const params = [];
+
+  if (search) {
+    conditions.push(`
+      (
+        CAST(nd.user_id AS CHAR) LIKE ?
+        OR nd.installation_id LIKE ?
+        OR nd.push_token LIKE ?
+        OR nd.browser LIKE ?
+      )
+    `);
+
+    const searchValue = `%${search}%`;
+
+    params.push(searchValue, searchValue, searchValue, searchValue);
+  }
+
+  if (platform) {
+    conditions.push("nd.platform = ?");
+    params.push(platform);
+  }
+
+  if (isActive !== undefined) {
+    conditions.push("nd.is_active = ?");
+    params.push(isActive);
+  }
+
+  const whereClause =
+    conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+
+  const [rows] = await db.execute(
+    `
+      SELECT
+        nd.id,
+        nd.user_id,
+        nd.installation_id,
+        nd.platform,
+        nd.device_type,
+        nd.browser,
+        nd.app_version,
+        nd.permission_status,
+        nd.is_active,
+        nd.last_registered_at,
+        nd.last_seen_at,
+        nd.created_at,
+        nd.updated_at
+      FROM notification_devices nd
+      ${whereClause}
+      ORDER BY nd.updated_at DESC
+      LIMIT ? OFFSET ?
+    `,
+    [...params, limit, offset],
+  );
+
+  const [[countResult]] = await db.execute(
+    `
+      SELECT COUNT(*) AS total
+      FROM notification_devices nd
+      ${whereClause}
+    `,
+    params,
+  );
+
+  return {
+    items: rows,
+    pagination: {
+      page,
+      limit,
+      total: countResult.total,
+      totalPages: Math.ceil(countResult.total / limit),
+    },
+  };
+};
+
+const getDeviceById = async (id) => {
+  const [rows] = await db.execute(
+    `
+      SELECT
+        id,
+        user_id,
+        installation_id,
+        platform,
+        device_type,
+        browser,
+        app_version,
+        permission_status,
+        is_active,
+        last_registered_at,
+        last_seen_at,
+        created_at,
+        updated_at
+      FROM notification_devices
+      WHERE id = ?
+      LIMIT 1
+    `,
+    [id],
+  );
+
+  return rows[0] || null;
+};
+
+const getAllNotifications = async ({
+  page = 1,
+  limit = 20,
+  type,
+  userId,
+  status,
+}) => {
+  const offset = (page - 1) * limit;
+
+  const conditions = [];
+  const params = [];
+
+  if (type) {
+    conditions.push("n.type = ?");
+    params.push(type);
+  }
+
+  if (userId) {
+    conditions.push("n.user_id = ?");
+    params.push(userId);
+  }
+
+  if (status) {
+    conditions.push("n.status = ?");
+    params.push(status);
+  }
+
+  const whereClause =
+    conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+
+  const [rows] = await db.execute(
+    `
+      SELECT
+        n.*
+      FROM notifications n
+      ${whereClause}
+      ORDER BY n.created_at DESC
+      LIMIT ? OFFSET ?
+    `,
+    [...params, limit, offset],
+  );
+
+  const [[countResult]] = await db.execute(
+    `
+      SELECT COUNT(*) AS total
+      FROM notifications n
+      ${whereClause}
+    `,
+    params,
+  );
+
+  return {
+    items: rows,
+    pagination: {
+      page,
+      limit,
+      total: countResult.total,
+      totalPages: Math.ceil(countResult.total / limit),
+    },
+  };
+};
+
+const getNotificationById = async (id) => {
+  const [rows] = await db.execute(
+    `
+      SELECT *
+      FROM notifications
+      WHERE id = ?
+      LIMIT 1
+    `,
+    [id],
+  );
+
+  return rows[0] || null;
+};
+
+const getNotificationStats = async () => {
+  const [[deviceStats]] = await db.execute(`
+    SELECT
+      COUNT(*) AS total_devices,
+
+      COALESCE(
+        SUM(
+          CASE
+            WHEN is_active = 1 THEN 1
+            ELSE 0
+          END
+        ),
+        0
+      ) AS active_devices,
+
+      COALESCE(
+        SUM(
+          CASE
+            WHEN platform = 'web' THEN 1
+            ELSE 0
+          END
+        ),
+        0
+      ) AS web_devices,
+
+      COALESCE(
+        SUM(
+          CASE
+            WHEN platform = 'android' THEN 1
+            ELSE 0
+          END
+        ),
+        0
+      ) AS android_devices,
+
+      COALESCE(
+        SUM(
+          CASE
+            WHEN platform = 'ios' THEN 1
+            ELSE 0
+          END
+        ),
+        0
+      ) AS ios_devices
+
+    FROM notification_devices
+  `);
+
+  const [[notificationStats]] = await db.execute(`
+    SELECT
+      COUNT(*) AS total_notifications
+    FROM notifications
+  `);
+
+  return {
+    devices: deviceStats,
+    notifications: notificationStats,
+  };
+};
+
 module.exports = {
   registerDevice,
   getDevicesByUserId,
   getActiveDevicesByUserId,
   deactivateDevice,
   createNotification,
+  getAllDevices,
+  getDeviceById,
+  getNotificationById,
+  getAllNotifications,
+  getNotificationStats,
 };

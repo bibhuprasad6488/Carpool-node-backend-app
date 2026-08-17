@@ -63,6 +63,7 @@ const {
 } = require("../controllers/admin/siteSetting.controller");
 const { handleExpiredRides } = require("../tasks/expireRidesTask");
 const { processDriverPayoutAdmin, getPayouts, getPayoutById, processPayout } = require("../controllers/admin/DriverPayout.controller");
+const { getAllDevices, getAllNotifications, getDeviceById, getNotificationById, getNotificationStats } = require("../controllers/admin/adminNotification.controller");
 
 router.get("/dashboard", auth, isAdmin, (req, res) => {
   res.json({ message: "Welcome to the admin panel backend!" });
@@ -219,6 +220,12 @@ router.post("/payouts/:payoutId/process", auth, isAdmin, processPayout);
 //   ]),
 //   updateSettings
 // );
+
+router.get("/notifications", getAllNotifications)
+router.get("/notifications/devices", getAllDevices)
+router.get("/notifications/device/:id", getDeviceById)
+router.get("/notifications/stats", getNotificationStats)
+router.get("/notifications/:id", getNotificationById)
 
 router.get("/test-cron", async (req, res) => {
   try {
