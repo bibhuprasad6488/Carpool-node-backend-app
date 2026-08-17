@@ -6,6 +6,8 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const db = require("../config/db");
 const { sendUserNotification } = require("../utils/notificationService");
+const { sendNotificationToUser } = require("../services/pushNotification.service");
+const NOTIFICATION_TYPES = require("../constants/notificationTypes");
 // const transporter = require("../config/mail");
 const APP_URL = process.env.APP_URL;
 
@@ -143,15 +145,19 @@ exports.register = async (req, res) => {
       { expiresIn: "7d" },
     );
 
-    sendUserNotification({
-      userId: userId,
-      type: "LOGIN_SUCCESS",
-      title: "New Login Detected",
-      message: `You successfully logged in. If this wasn't you, please secure your account immediately.`,
-      data: {
-        user: userData,
-      },
-    });
+    try {
+      await sendNotificationToUser({
+        userId: userId,
+        type: NOTIFICATION_TYPES.SIGNUP_SUCCESS,
+        title: "Welcome to Carpooling 🎉",
+        body: "Your account has been created successfully.",
+        data: {
+          screen: "home",
+        },
+      });
+    } catch (error) {
+      console.error("[SIGNUP] Notification failed:", error);
+    }
 
     return res.status(201).json({
       status: "success",
@@ -220,7 +226,7 @@ exports.updateUserDetails = async (req, res) => {
 
     if (existingDetails.length > 0) {
       // Update existing details
-    await connection.query("SET time_zone = '+05:30'");
+      await connection.query("SET time_zone = '+05:30'");
 
       await connection.query(
         `UPDATE user_details
@@ -261,7 +267,7 @@ exports.updateUserDetails = async (req, res) => {
       );
     } else {
       // Create user details
-    await connection.query("SET time_zone = '+05:30'");
+      await connection.query("SET time_zone = '+05:30'");
 
       await connection.query(
         `INSERT INTO user_details

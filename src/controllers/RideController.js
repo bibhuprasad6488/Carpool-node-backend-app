@@ -10,6 +10,9 @@ const {
   sendRideRoomNotification,
 } = require("../utils/notificationService");
 const { logger } = require("@rudranarayan01/logaccent");
+const {
+  sendNotificationToUser,
+} = require("../services/pushNotification.service");
 
 exports.index = async (req, res) => {
   try {
@@ -217,6 +220,21 @@ exports.store = async (req, res) => {
     },
   });
 
+  try {
+    await sendNotificationToUser({
+      userId: driver_id,
+      type: "RIDE_PUBLISHED",
+      title: "Ride published",
+      body: "Your ride has been published successfully.",
+      data: {
+        rideId,
+        screen: "ride-details",
+      },
+    });
+  } catch (error) {
+    console.error("Failed to send ride published notification:", error);
+  }
+
   return res.status(201).json({
     status: "success",
     message: "Ride published successfully.",
@@ -370,9 +388,7 @@ exports.startRide = async (req, res) => {
   try {
     const { rideId } = req.params;
     const driverId = req.user.id;
-
     const ride = await Ride.findRideByIdAndDriver(rideId, driverId);
-
     if (!ride) {
       return res
         .status(404)
@@ -388,14 +404,20 @@ exports.startRide = async (req, res) => {
     // Executes atomic update for both rides and ride_bookings
     await Ride.startRideWithBookings(rideId);
 
-    // Socket real-time broadcast
-    sendRideRoomNotification({
-      rideId,
-      type: NOTIFICATION_TYPES.RIDE_STARTED,
-      title: "Ride Started 🚗",
-      message: "Your driver has started the journey. Have a safe trip!",
-      data: { rideId, driverId },
-    });
+    try {
+      await sendNotificationToUser({
+        userId: driverId,
+        type: "RIDE_STARTING_SOON",
+        title: "Ride starting soon ⏰",
+        body: `Your ride from ${ride.source_address} to ${ride.destination_address} starts soon.`,
+        data: {
+          rideId,
+          screen: "ride-details",
+        },
+      });
+    } catch (error) {
+      console.error("[RIDE_STARTING_SOON] Driver notification failed:", error);
+    }
 
     return res.status(200).json({
       success: true,
@@ -492,18 +514,45 @@ exports.cancelRide = async (req, res) => {
     const cancelCode = "CANCEL_BY_DRIVER";
 
     // Atomically updates rides and ride_bookings to 'cancelled' with cancel_reason
-    await Ride.cancelRideWithBookings(rideId, reason, cancelCode || "Cancelled by driver");
+    await Ride.cancelRideWithBookings(
+      rideId,
+      reason,
+      cancelCode || "Cancelled by driver",
+    );
+
+    const [bookings] = await db.execute(
+      `
+    SELECT
+      id,
+      passenger_id
+    FROM ride_bookings
+    WHERE ride_id = ?
+      AND status NOT IN ('cancelled', 'rejected')
+  `,
+      [rideId],
+    );
 
     // Socket real-time broadcast
-    sendRideRoomNotification({
-      rideId,
-      type: NOTIFICATION_TYPES.RIDE_CANCELLED,
-      title: "Opps..!! Ride Cancelled by driver.",
-      message: reason
-        ? `The driver cancelled the ride. Reason: ${reason}`
-        : "The driver has cancelled this ride.",
-      data: { rideId, reason: reason || "Driver cancelled" },
-    });
+    for (const booking of bookings) {
+      try {
+        await sendNotificationToUser({
+          userId: booking.passenger_id,
+          type: "RIDE_CANCELLED",
+          title: "Ride cancelled 🚫",
+          body: `Your booked ride from ${ride.source_address} to ${ride.destination_address} has been cancelled by the driver.`,
+          data: {
+            rideId,
+            bookingId: booking.id,
+            screen: "booking",
+          },
+        });
+      } catch (error) {
+        console.error(
+          `[RIDE_CANCELLED] Passenger notification failed for booking ${booking.id}:`,
+          error,
+        );
+      }
+    }
 
     return res.status(200).json({
       success: true,
