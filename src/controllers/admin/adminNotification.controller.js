@@ -61,14 +61,14 @@ const getDeviceById = async (req, res) => {
 
 const getAllNotifications = async (req, res) => {
   try {
-    const { page = 1, limit = 20, type, user_id, status } = req.query;
+    const { page = 1, limit = 20, type, user_id, is_read } = req.query;
 
     const result = await notificationRepository.getAllNotifications({
       page: Number(page),
       limit: Number(limit),
       type,
       userId: user_id,
-      status,
+      isRead: is_read,
     });
 
     return res.status(200).json({

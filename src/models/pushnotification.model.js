@@ -264,8 +264,11 @@ const getAllNotifications = async ({
   limit = 20,
   type,
   userId,
-  status,
+  isRead,
 }) => {
+  page = Math.max(Number(page) || 1, 1);
+  limit = Math.min(Math.max(Number(limit) || 20, 1), 100);
+
   const offset = (page - 1) * limit;
 
   const conditions = [];
@@ -281,24 +284,35 @@ const getAllNotifications = async ({
     params.push(userId);
   }
 
-  if (status) {
-    conditions.push("n.status = ?");
-    params.push(status);
+  if (isRead !== undefined && isRead !== "") {
+    conditions.push("n.is_read = ?");
+    params.push(Number(isRead));
   }
 
   const whereClause =
     conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
+  // IMPORTANT:
+  // LIMIT/OFFSET are inserted after validation instead
+  // of being passed as prepared-statement parameters.
   const [rows] = await db.execute(
     `
       SELECT
-        n.*
+        n.id,
+        n.user_id,
+        n.type,
+        n.title,
+        n.body,
+        n.data,
+        n.is_read,
+        n.read_at,
+        n.created_at
       FROM notifications n
       ${whereClause}
       ORDER BY n.created_at DESC
-      LIMIT ? OFFSET ?
+      LIMIT ${limit} OFFSET ${offset}
     `,
-    [...params, limit, offset],
+    params,
   );
 
   const [[countResult]] = await db.execute(
@@ -315,8 +329,8 @@ const getAllNotifications = async ({
     pagination: {
       page,
       limit,
-      total: countResult.total,
-      totalPages: Math.ceil(countResult.total / limit),
+      total: Number(countResult.total),
+      totalPages: Math.ceil(Number(countResult.total) / limit),
     },
   };
 };
