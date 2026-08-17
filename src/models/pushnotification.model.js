@@ -32,15 +32,17 @@ const registerDevice = async ({
   if (existing.length) {
     await db.execute(
       `
-        UPDATE notification_devices
-        SET
-          user_id = ?,
-          push_token = ?,
-          platform = ?,
-          is_active = 1,
-          updated_at = NOW()
-        WHERE installation_id = ?
-      `,
+    UPDATE notification_devices
+    SET
+      user_id = ?,
+      push_token = ?,
+      platform = ?,
+      is_active = 1,
+      last_registered_at = NOW(),
+      last_seen_at = NOW(),
+      updated_at = NOW()
+    WHERE installation_id = ?
+  `,
       [userId, pushToken, platform, installationId],
     );
 
