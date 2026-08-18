@@ -10,6 +10,7 @@ const {
   NOTIFICATION_TYPES,
   sendAdminNotification,
 } = require("../utils/notificationService");
+const { sendNotificationToUser } = require("../services/pushNotification.service");
 
 exports.conversation = async (req, res) => {
   try {
@@ -132,24 +133,33 @@ exports.messages = async (req, res) => {
 exports.send = async (req, res) => {
   try {
     const errors = validationResult(req);
+
     if (!errors.isEmpty()) {
-      return res.status(422).json({ status: "error", errors: errors.array() });
+      return res.status(422).json({
+        status: "error",
+        errors: errors.array(),
+      });
     }
 
     const { conversation_id, message } = req.body;
+
     const conversation = await Conversation.findById(conversation_id);
 
     if (!conversation) {
-      return res
-        .status(404)
-        .json({ status: "error", message: "Conversation not found" });
+      return res.status(404).json({
+        status: "error",
+        message: "Conversation not found",
+      });
     }
 
     if (
       req.user.id !== conversation.driver_id &&
       req.user.id !== conversation.passenger_id
     ) {
-      return res.status(403).json({ status: "error", message: "Unauthorized" });
+      return res.status(403).json({
+        status: "error",
+        message: "Unauthorized",
+      });
     }
 
     const newMessage = await Message.create({
@@ -159,33 +169,67 @@ exports.send = async (req, res) => {
     });
 
     newMessage.sender = newMessage.sender == 2 ? "driver" : "passenger";
+
     const createdAt = new Date(newMessage.created_at);
 
     newMessage.date = createdAt.toLocaleDateString("en-GB", {
       day: "2-digit",
       month: "short",
       year: "numeric",
-    }); // 01 Aug 2026
+    });
 
     newMessage.time = createdAt.toLocaleTimeString("en-US", {
       hour: "numeric",
       minute: "2-digit",
       hour12: true,
-    }); // 2:35 PM
+    });
 
-    // Remove the original datetime field
     delete newMessage.created_at;
 
-    // Broadcast to authorized room only
+    // ─────────────────────────────────────
+    // SOCKET.IO
+    // ─────────────────────────────────────
+
     const io = getIO();
+
     io.to(`conversation_${conversation_id}`).emit(
       "message_received",
       newMessage,
     );
 
+    // ─────────────────────────────────────
+    // PUSH NOTIFICATION
+    // ─────────────────────────────────────
+
+    const recipientId =
+      req.user.id === conversation.driver_id
+        ? conversation.passenger_id
+        : conversation.driver_id;
+
+    try {
+      await sendNotificationToUser({
+        userId: recipientId,
+        type: NOTIFICATION_TYPES.CONVERSATION,
+        title: "New message 💬",
+        body: message.length > 100 ? `${message.substring(0, 97)}...` : message,
+        data: {
+          conversationId: String(conversation_id),
+          messageId: String(newMessage.id),
+          senderId: String(req.user.id),
+          screen: "conversation",
+        },
+      });
+    } catch (notificationError) {
+      console.error("[CHAT] Push notification failed:", notificationError);
+    }
+
+    // ─────────────────────────────────────
+    // ADMIN NOTIFICATION
+    // ─────────────────────────────────────
+
     sendAdminNotification({
       type: NOTIFICATION_TYPES.CONVERSATION,
-      title: "New Message Recieved..!!",
+      title: "New Message Received",
       message: `New message from ${req.user.id}.`,
       data: {
         conversationId: conversation_id,
@@ -198,9 +242,11 @@ exports.send = async (req, res) => {
       data: newMessage,
     });
   } catch (err) {
-    // console.error(err);
     logger.error(err);
-    return res.status(500).json({ status: "error", message: err });
+    return res.status(500).json({
+      status: "error",
+      message: err,
+    });
   }
 };
 

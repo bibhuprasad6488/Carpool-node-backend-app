@@ -9,9 +9,11 @@ const User = require("../models/User");
 const {
   sendAdminNotification,
   NOTIFICATION_TYPES,
-  sendUserNotification,
 } = require("../utils/notificationService");
 const Vehicle = require("../models/Vehicle");
+const {
+  sendNotificationToUser,
+} = require("../services/pushNotification.service");
 const validatePaymentVerification =
   require("razorpay/dist/utils/razorpay-utils").validatePaymentVerification;
 
@@ -210,17 +212,22 @@ exports.store = async (req, res) => {
       },
     });
 
-    sendUserNotification({
-      userId: ride.driver_id,
-      type: NOTIFICATION_TYPES.RIDE_BOOKED,
-      title: "New Ride Booking",
-      message: `${req.user.name || "A passenger"} booked a seat for your ride from ${ride.origin} to ${ride.destination}`,
-      data: {
-        rideId: ride.id,
-        bookingId: bookingId,
-        passengerId: req.user.id,
-      },
-    });
+    try {
+      const passengerId = req.user.id;
+      await sendNotificationToUser({
+        userId: passengerId,
+        type: "BOOKING_CREATED",
+        title: "Ride booked",
+        body: `Your booking for ${ride.source_address} → ${ride.destination_address} has been confirmed.`,
+        data: {
+          bookingId: bookingId,
+          rideId: ride_id,
+          screen: "booking",
+        },
+      });
+    } catch (error) {
+      console.error("Failed to notify passenger:", error);
+    }
 
     return res.json({
       status: "success",
@@ -690,7 +697,6 @@ function rideFormatData(ride) {
   };
 }
 
-
 exports.getMyBookedRides = async (req, res, next) => {
   try {
     const passengerId = req.user?.id || req.query.passengerId;
@@ -708,7 +714,7 @@ exports.getMyBookedRides = async (req, res, next) => {
     const { bookings, pagination } = await Booking.getPassengerBookings(
       passengerId,
       page,
-      limit
+      limit,
     );
 
     return res.status(200).json({
