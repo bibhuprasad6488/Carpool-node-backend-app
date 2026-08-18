@@ -1,44 +1,49 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
 
 const uploadCloudinary = require("../middleware/uploadMiddleware");
 
-const auth = require('../middleware/auth');
-const upload = require('../middleware/upload');
-const LoginController = require('../controllers/LoginController');
-const UserController = require('../controllers/UserController');
-const VehicleController = require('../controllers/VehicleController');
-const BookingController = require('../controllers/BookingController');
-const RideController = require('../controllers/RideController');
-const ChatController = require('../controllers/ChatController');
-const { triggerSos } = require('../controllers/sosController');
-const { storeRating } = require('../controllers/ratingController');
+const auth = require("../middleware/auth");
+const upload = require("../middleware/upload");
+const LoginController = require("../controllers/LoginController");
+const UserController = require("../controllers/UserController");
+const VehicleController = require("../controllers/VehicleController");
+const BookingController = require("../controllers/BookingController");
+const RideController = require("../controllers/RideController");
+const ChatController = require("../controllers/ChatController");
+const { triggerSos } = require("../controllers/sosController");
+const { storeRating } = require("../controllers/ratingController");
+const {
+  registerDevice,
+  sendTestNotification,
+  broadcastNotification,
+} = require("../controllers/notification.controller");
 
+router.get("/get-roles", UserController.getRoles);
 
-router.get('/get-roles', UserController.getRoles)
+router.post("/register", UserController.register);
 
-router.post(
-    "/register",
-    UserController.register
-);
-
-router.post('/login', uploadCloudinary.none(), LoginController.userLogin);
+router.post("/login", uploadCloudinary.none(), LoginController.userLogin);
 router.post("/forgot-password", UserController.passwordReset);
 router.post("/send-otp", UserController.sendOTP);
 router.post("/verify-otp", UserController.verifyOTP);
 
-router.get('/users', auth, UserController.index);
-router.get('/edit-user', auth, UserController.edit);
-router.post('/update-user-details', auth,
-    uploadCloudinary.fields([
-        { name: "driver_license", maxCount: 1 },
-        { name: "adhhar_card", maxCount: 1 },
-        { name: "pan_card", maxCount: 1 },
-        { name: "bank_account", maxCount: 1 },
-        { name: "profile_picture", maxCount: 1 }
-    ]), UserController.updateUserDetails);
-router.get('/get-me', auth, UserController.getLoginUser);
-router.get('/profile-status', auth, UserController.getProfileStatus);
+router.get("/users", auth, UserController.index);
+router.get("/edit-user", auth, UserController.edit);
+router.post(
+  "/update-user-details",
+  auth,
+  uploadCloudinary.fields([
+    { name: "driver_license", maxCount: 1 },
+    { name: "adhhar_card", maxCount: 1 },
+    { name: "pan_card", maxCount: 1 },
+    { name: "bank_account", maxCount: 1 },
+    { name: "profile_picture", maxCount: 1 },
+  ]),
+  UserController.updateUserDetails,
+);
+router.get("/get-me", auth, UserController.getLoginUser);
+router.get("/profile-status", auth, UserController.getProfileStatus);
 
 /*
 |--------------------------------------------------------------------------
@@ -57,30 +62,35 @@ router.get('/profile-status', auth, UserController.getProfileStatus);
 router.get("/vehicles", auth, VehicleController.index);
 router.get("/vehicles-list", auth, VehicleController.allVehicleLists);
 
-router.post("/store-vehicle-data",
-    auth,
-    uploadCloudinary.fields([
-        { name: "rc_file", maxCount: 1 },
-        { name: "insurance_file", maxCount: 1 },
-        { name: "front_image", maxCount: 1 },
-        { name: "back_image", maxCount: 1 },
-        { name: "side_image", maxCount: 1 },
-        { name: "number_plate_image", maxCount: 1 }
-    ]),
-    VehicleController.store
+router.post(
+  "/store-vehicle-data",
+  auth,
+  uploadCloudinary.fields([
+    { name: "rc_file", maxCount: 1 },
+    { name: "insurance_file", maxCount: 1 },
+    { name: "front_image", maxCount: 1 },
+    { name: "back_image", maxCount: 1 },
+    { name: "side_image", maxCount: 1 },
+    { name: "number_plate_image", maxCount: 1 },
+  ]),
+  VehicleController.store,
 );
 
 router.get("/edit-vehicle-data/:id", auth, VehicleController.edit);
 
-router.put("/update-vehicle-data/:id", auth,
-    upload("vehicle").fields([
-        { name: "rc_file", maxCount: 1 },
-        { name: "insurance_file", maxCount: 1 },
-        { name: "front_image", maxCount: 1 },
-        { name: "back_image", maxCount: 1 },
-        { name: "side_image", maxCount: 1 },
-        { name: "number_plate_image", maxCount: 1 }
-    ]), VehicleController.update);
+router.put(
+  "/update-vehicle-data/:id",
+  auth,
+  upload("vehicle").fields([
+    { name: "rc_file", maxCount: 1 },
+    { name: "insurance_file", maxCount: 1 },
+    { name: "front_image", maxCount: 1 },
+    { name: "back_image", maxCount: 1 },
+    { name: "side_image", maxCount: 1 },
+    { name: "number_plate_image", maxCount: 1 },
+  ]),
+  VehicleController.update,
+);
 
 // router.delete("/destroy-vehicle-data/:id", auth, VehicleController.destroy);
 
@@ -90,16 +100,16 @@ router.put("/update-vehicle-data/:id", auth,
 |--------------------------------------------------------------------------
 */
 router.post("/find-rides", RideController.findRides);
-router.get('/top-corridors', RideController.getTopCorridors);
+router.get("/top-corridors", RideController.getTopCorridors);
 router.get("/rides/upcoming", RideController.getUpcomingRides);
-router.post('/search-locaton', RideController.searchLocations);
+router.post("/search-locaton", RideController.searchLocations);
 router.get("/rides", auth, RideController.index);
 router.post("/store-ride-data", auth, RideController.store);
 router.get("/edit-ride-data/:id", auth, RideController.edit);
 router.get("/get-ride-data/:id", RideController.getRideData);
-router.patch('/ride/:rideId/start', auth, RideController.startRide);
-router.patch('/ride/:rideId/complete', auth, RideController.completeRide);
-router.patch('/ride/:rideId/cancel', auth, RideController.cancelRide);
+router.patch("/ride/:rideId/start", auth, RideController.startRide);
+router.patch("/ride/:rideId/complete", auth, RideController.completeRide);
+router.patch("/ride/:rideId/cancel", auth, RideController.cancelRide);
 
 /*
 |--------------------------------------------------------------------------
@@ -122,23 +132,22 @@ router.post("/payment-failed", auth, BookingController.paymentFailed);
 
 // router.post("/bookings/:id/cancel", auth, BookingController.cancelUserBooking);
 
-
 // Messages
 
 router.get("/conversation/:bookingId", auth, ChatController.conversation);
-
 router.get("/messages/:conversationId", auth, ChatController.messages);
-
 router.post("/send", auth, ChatController.send);
-
-
 router.get("/driver/chats", auth, ChatController.driverChats);
-
 
 /// SOS
 router.post("/rides/:ride_id/sos", auth, triggerSos);
 
 // Ratings
 router.post("/ratings", auth, storeRating);
+
+//Push notifications
+router.post("/notifications/devices", auth, registerDevice);
+router.post("/notifications/test", auth, sendTestNotification);
+router.post("/notifications/broadcast", broadcastNotification);
 
 module.exports = router;
