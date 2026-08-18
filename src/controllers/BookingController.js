@@ -555,16 +555,19 @@ exports.paymentFailed = async (req, res) => {
 
     const ride = rides[0];
 
+    const cancelCode = "PAYMENT_FAILED";
+
     // Update Booking
     await connection.query(
-      `UPDATE ride_bookings
-            SET
-            status='cancelled',
-            payment_status='failed',
-            updated_at=NOW(),
-            reason_of_cancel=?
-            WHERE id=?`,
-      [reason, booking.id],
+      `UPDATE ride_bookings 
+   SET 
+     status = 'cancelled',
+     payment_status = 'failed',
+     reason_of_cancel = ?,
+     cancel_reason = ?,
+     updated_at = NOW()
+   WHERE id = ?`,
+      [reason, cancelCode, booking.id],
     );
 
     // Update Payment
@@ -613,10 +616,13 @@ exports.paymentFailed = async (req, res) => {
       };
     }
 
+    const bookingDetails = await Booking.getBookingDetails(booking_id);
+
     return res.json({
       status: "success",
       message: "Payment marked as failed.",
       ride: rideFormatData(rideData),
+      booking: bookingDetails,
     });
   } catch (err) {
     await connection.rollback();
