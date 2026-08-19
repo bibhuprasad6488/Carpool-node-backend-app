@@ -741,9 +741,10 @@ exports.getBookingDetailsById = async (req, res) => {
     });
   }
 
+};
 
   // private function for format
-  function rideFormatData(ride) {
+function rideFormatData(ride) {
     return {
       id: ride.id,
       driver_id: ride.driver_id,
@@ -776,5 +777,3 @@ exports.getBookingDetailsById = async (req, res) => {
       // route_points: ride.route_points
     };
   }
-};
-
