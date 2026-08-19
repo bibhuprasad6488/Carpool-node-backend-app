@@ -668,40 +668,7 @@ exports.updatePaymentsRecord = async (req, res) => {
   }
 };
 
-// private function for format
-function rideFormatData(ride) {
-  return {
-    id: ride.id,
-    driver_id: ride.driver_id,
-    vehicle_id: ride.vehicle_id,
-    source_address: ride.source_address,
-    source_place_id: ride.source_place_id,
-    destination_address: ride.destination_address,
-    destination_place_id: ride.destination_place_id,
-    source_lat: ride.source_lat,
-    source_lng: ride.source_lng,
-    destination_lat: ride.destination_lat,
-    destination_lng: ride.destination_lng,
-    ride_date: ride.ride_date,
-    departure_time: ride.departure_time,
-    polyline: ride.polyline,
-    distance_meters: ride.distance_meters,
-    duration_seconds: ride.duration_seconds,
-    estimated_reach_time: ride.estimated_reach_time,
-    pet_allowed: ride.pet_allowed,
-    smoking_allowed: ride.smoking_allowed,
-    instant_booking: ride.instant_booking,
-    max_two_in_back: ride.max_two_in_back,
-    price_per_seat: ride.price_per_seat,
-    total_seats: ride.total_seats,
-    available_seats: ride.available_seats,
-    status: ride.status,
-    // total_price: ride.total_price,
-    vehicle_details: ride.vehicle_details,
-    driver_details: ride.driver_details,
-    // route_points: ride.route_points
-  };
-}
+
 
 exports.getMyBookedRides = async (req, res, next) => {
   try {
@@ -735,4 +702,79 @@ exports.getMyBookedRides = async (req, res, next) => {
   }
 };
 
+exports.getBookingDetailsById = async (req, res) => {
+  const userId = req.user.id;
+
+  try {
+    const { bookingId } = req.params;
+    const booking = await Booking.getBookingDetails(bookingId);
+
+    if (userId != booking.passenger_id) {
+      return res.status(500).json({
+        status: "error",
+        message: "Unauthorize access"
+      });
+    }
+    const ride = await Ride.rideDetailsById(booking.ride_id);
+    // Vehicle Details
+    const vehicleDetails = await Vehicle.getByVehicleId(ride.vehicle_id);
+
+    if (vehicleDetails) {
+      ride.vehicle_details = vehicleDetails;
+      ride.driver_details = await User.getUserWithDetails(ride.driver_id);
+    }
+
+    booking.passenger_details = await User.getUserWithDetails(booking.passenger_id);
+
+    return res.status(200).json({
+      status: "success",
+      ride: rideFormatData(ride),
+      data: booking
+    });
+  } catch (err) {
+    // console.error(err);
+    logger.error(err);
+
+    return res.status(500).json({
+      status: "error",
+      message: err.message,
+    });
+  }
+
+
+  // private function for format
+  function rideFormatData(ride) {
+    return {
+      id: ride.id,
+      driver_id: ride.driver_id,
+      vehicle_id: ride.vehicle_id,
+      source_address: ride.source_address,
+      source_place_id: ride.source_place_id,
+      destination_address: ride.destination_address,
+      destination_place_id: ride.destination_place_id,
+      source_lat: ride.source_lat,
+      source_lng: ride.source_lng,
+      destination_lat: ride.destination_lat,
+      destination_lng: ride.destination_lng,
+      ride_date: ride.ride_date,
+      departure_time: ride.departure_time,
+      polyline: ride.polyline,
+      distance_meters: ride.distance_meters,
+      duration_seconds: ride.duration_seconds,
+      estimated_reach_time: ride.estimated_reach_time,
+      pet_allowed: ride.pet_allowed,
+      smoking_allowed: ride.smoking_allowed,
+      instant_booking: ride.instant_booking,
+      max_two_in_back: ride.max_two_in_back,
+      price_per_seat: ride.price_per_seat,
+      total_seats: ride.total_seats,
+      available_seats: ride.available_seats,
+      status: ride.status,
+      // total_price: ride.total_price,
+      vehicle_details: ride.vehicle_details,
+      driver_details: ride.driver_details,
+      // route_points: ride.route_points
+    };
+  }
+};
 
