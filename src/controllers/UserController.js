@@ -180,6 +180,9 @@ exports.updateUserDetails = async (req, res) => {
 
   try {
     const {
+      name,
+      email,
+      phone,
       city,
       state,
       country,
@@ -194,6 +197,33 @@ exports.updateUserDetails = async (req, res) => {
     const userId = req.user.id;
 
     await connection.beginTransaction();
+    // Get user account
+    const [existingUser] = await connection.query(
+      `SELECT *
+            FROM users
+            WHERE id = ?
+            LIMIT 1`,
+      [userId],
+    );
+
+    if (existingUser.length > 0) {
+      await connection.query(
+        `UPDATE users
+            SET
+              name = ?,
+              email = ?,
+              phone = ?,
+              updated_at = NOW()
+              WHERE id = ?`,
+        [
+          name,
+          email,
+          phone,
+          userId,
+        ],
+      );
+    }
+
 
     // Get existing user details
     const [existingDetails] = await connection.query(
@@ -316,6 +346,90 @@ exports.updateUserDetails = async (req, res) => {
     return res.status(200).json({
       status: "success",
       message: "Profile updated successfully",
+    });
+  } catch (err) {
+    await connection.rollback();
+
+    logger.error(err);
+
+    return res.status(500).json({
+      status: "error",
+      message: err.message,
+    });
+  } finally {
+    connection.release();
+  }
+};
+
+exports.uploadProfilePicture = async (req, res) => {
+  const connection = await db.getConnection();
+
+  try {
+    const userId = req.user.id;
+    await connection.beginTransaction();
+
+    // Get existing user details
+    const [existingDetails] = await connection.query(
+      `SELECT *
+            FROM user_details
+            WHERE user_id = ?
+            LIMIT 1`,
+      [userId],
+    );
+
+    // Keep existing file URLs if no new file is uploaded
+    const profile_picture =
+      req.files?.profile_picture?.[0]?.path ??
+      existingDetails[0]?.profile_picture ??
+      null;
+
+    if (!profile_picture || profile_picture == null) {
+      return res.status(500).json({
+        status: "error",
+        message: "Upload a Profile photo",
+      });
+    }
+
+    if (existingDetails.length > 0) {
+      // Update existing details
+      await connection.query("SET time_zone = '+05:30'");
+
+      await connection.query(
+        `UPDATE user_details
+            SET
+              profile_picture = ?,
+              updated_at = NOW()
+              WHERE user_id = ?`,
+        [
+          profile_picture,
+          userId,
+        ],
+      );
+    } else {
+      // Create user details
+      await connection.query("SET time_zone = '+05:30'");
+
+      await connection.query(
+        `INSERT INTO user_details
+                (
+                  user_id,
+                  profile_picture,
+                  created_at,
+                  updated_at
+                )
+                VALUES (?, ?, NOW(), NOW())`,
+        [
+          userId,
+          profile_picture,
+        ],
+      );
+    }
+
+    await connection.commit();
+
+    return res.status(200).json({
+      status: "success",
+      message: "Profile image uploaded successfully",
     });
   } catch (err) {
     await connection.rollback();
