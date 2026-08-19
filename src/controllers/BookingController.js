@@ -185,7 +185,7 @@ exports.store = async (req, res) => {
 
     // Socket.IO Broadcast
     const io = getIO();
-    io.to(`ride-${ride.id}`).emit("ride-seat-updated", updatedRide[0]);
+    io.to(`ride_${ride.id}`).emit("ride-seat-updated", updatedRide[0]);
 
     const [rows] = await connection.query(
       `SELECT created_at
@@ -590,7 +590,7 @@ exports.paymentFailed = async (req, res) => {
     // Socket.IO Broadcast
     const io = getIO();
 
-    io.to(`ride-${ride.id}`).emit("ride-seat-updated", updatedRide[0]);
+    io.to(`ride_${ride.id}`).emit("ride-seat-updated", updatedRide[0]);
 
     const rideData = await Ride.rideDetailsById(booking.ride_id);
 
@@ -734,3 +734,5 @@ exports.getMyBookedRides = async (req, res, next) => {
     next(error);
   }
 };
+
+
