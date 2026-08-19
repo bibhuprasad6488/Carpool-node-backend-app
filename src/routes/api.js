@@ -50,7 +50,7 @@ router.post(
     uploadCloudinary.fields([
         { name: "profile_picture", maxCount: 1 },
     ]),
-    UserController.updateUserDetails,
+    UserController.uploadProfilePicture,
 );
 router.get("/get-me", auth, UserController.getLoginUser);
 router.get("/profile-status", auth, UserController.getProfileStatus);
@@ -129,6 +129,7 @@ router.patch("/ride/:rideId/cancel", auth, RideController.cancelRide);
 
 // router.get("/driver/booking-requests", auth, BookingController.index);
 router.get("/my-bookings", auth, BookingController.getMyBookedRides);
+router.get("/get-booking-details/:bookingId", auth, BookingController.getBookingDetailsById);
 
 router.post("/create-booking", auth, BookingController.store);
 router.post("/payment-success", auth, BookingController.paymentSuccess);
