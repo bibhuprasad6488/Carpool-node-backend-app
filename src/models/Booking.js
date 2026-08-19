@@ -37,9 +37,8 @@ class Booking {
 
       -- Cancellation & Expiration Metadata
       b.cancelled_at,
-      b.cancel_reason,
+      b.cancel_reason as cancel_code,
       b.reason_of_cancel,
-      COALESCE(b.cancel_reason, b.reason_of_cancel) AS display_cancel_reason,
 
       -- Ride Details
       r.id AS ride_id,

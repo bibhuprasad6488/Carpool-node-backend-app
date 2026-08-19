@@ -517,7 +517,7 @@ exports.cancelRide = async (req, res) => {
     await Ride.cancelRideWithBookings(
       rideId,
       reason,
-      cancelCode || "Cancelled by driver",
+      cancelCode || "CANCEL_BY_DRIVER",
     );
 
     const [bookings] = await db.execute(
@@ -532,9 +532,11 @@ exports.cancelRide = async (req, res) => {
       [rideId],
     );
 
-    // Socket real-time broadcast
+    console.log(bookings)
+
     for (const booking of bookings) {
       try {
+        console.log("Notification sending")
         await sendNotificationToUser({
           userId: booking.passenger_id,
           type: "RIDE_CANCELLED",
@@ -546,6 +548,7 @@ exports.cancelRide = async (req, res) => {
             screen: "booking",
           },
         });
+        console.log("Notification sent")
       } catch (error) {
         console.error(
           `[RIDE_CANCELLED] Passenger notification failed for booking ${booking.id}:`,
