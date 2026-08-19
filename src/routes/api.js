@@ -127,6 +127,7 @@ router.patch("/ride/:rideId/cancel", auth, RideController.cancelRide);
 
 // router.get("/driver/booking-requests", auth, BookingController.index);
 router.get("/my-bookings", auth, BookingController.getMyBookedRides);
+router.get("/get-booking-details/:bookingId", auth, BookingController.getBookingDetailsById);
 
 router.post("/create-booking", auth, BookingController.store);
 router.post("/payment-success", auth, BookingController.paymentSuccess);
