@@ -18,6 +18,8 @@ const {
     sendTestNotification,
     broadcastNotification,
 } = require("../controllers/notification.controller");
+const isAdmin = require("../middleware/admin");
+const { getEarnings } = require("../controllers/earningsController");
 
 router.get("/get-roles", UserController.getRoles);
 
@@ -153,6 +155,10 @@ router.post("/ratings", auth, storeRating);
 //Push notifications
 router.post("/notifications/devices", auth, registerDevice);
 router.post("/notifications/test", auth, sendTestNotification);
-router.post("/notifications/broadcast", auth, broadcastNotification);
+router.post("/admin/notifications/broadcast", auth, isAdmin,  broadcastNotification);
+
+
+
+router.get("/driver/earnings", auth, getEarnings);
 
 module.exports = router;
