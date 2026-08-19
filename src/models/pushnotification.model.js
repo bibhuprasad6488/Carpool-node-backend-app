@@ -409,6 +409,13 @@ const getNotificationStats = async () => {
   };
 };
 
+const deleteDeviceByInstallationId = async (installationId) => {
+  return await db.execute(
+    `DELETE FROM notification_devices WHERE installation_id = ?`,
+    [installationId]
+  );
+};
+
 module.exports = {
   registerDevice,
   getDevicesByUserId,
@@ -420,4 +427,5 @@ module.exports = {
   getNotificationById,
   getAllNotifications,
   getNotificationStats,
+  deleteDeviceByInstallationId
 };

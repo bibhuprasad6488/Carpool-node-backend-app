@@ -35,7 +35,7 @@ const sendAdminNotification = ({ type, title, message, data = {} }) => {
 
     io.to("admin-control-room").emit("admin_notification", payload);
 
-    console.log(`[ADMIN NOTIFICATION SENT] (${type}): ${title}`);
+    // console.log(`[ADMIN NOTIFICATION SENT] (${type}): ${title}`);
   } catch (error) {
     console.error("[ADMIN NOTIFICATION ERROR]", error.message);
   }

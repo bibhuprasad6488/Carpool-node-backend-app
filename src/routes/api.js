@@ -145,6 +145,6 @@ router.post("/ratings", auth, storeRating);
 //Push notifications
 router.post("/notifications/devices", auth, registerDevice);
 router.post("/notifications/test", auth, sendTestNotification);
-router.post("/notifications/broadcast", auth, broadcastNotification);
+router.post("/notifications/broadcast",  broadcastNotification);
 
 module.exports = router;
