@@ -22,7 +22,9 @@ module.exports = {
         if (userId) {
           const roomName = `user_${userId}`;
           socket.join(roomName);
-          console.log(`👤 Socket ${socket.id} joined personal room: ${roomName}`);
+          console.log(
+            `👤 Socket ${socket.id} joined personal room: ${roomName}`,
+          );
         }
       });
 
@@ -53,7 +55,9 @@ module.exports = {
 
           const roomName = `conversation_${conversationId}`;
           socket.join(roomName);
-          console.log(`💬 User ${userId} (Socket ${socket.id}) joined room: ${roomName}`);
+          console.log(
+            `💬 User ${userId} (Socket ${socket.id}) joined room: ${roomName}`,
+          );
 
           socket.emit("joined_room", { room: roomName, success: true });
         } catch (error) {
@@ -92,7 +96,9 @@ module.exports = {
       });
 
       socket.on("disconnect", (reason) => {
-        console.log(`❌ Socket disconnected: ID ${socket.id} (Reason: ${reason})`);
+        console.log(
+          `❌ Socket disconnected: ID ${socket.id} (Reason: ${reason})`,
+        );
       });
     });
 

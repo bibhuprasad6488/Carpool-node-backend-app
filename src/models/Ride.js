@@ -620,7 +620,7 @@ class Ride {
         `UPDATE ride_bookings 
        SET status = 'cancelled', cancelled_at = NOW(), cancel_reason = ?, reason_of_cancel =?, updated_at = NOW() 
        WHERE ride_id = ? AND status NOT IN ('cancelled', 'completed')`,
-        [cancelReason, cancelCode, rideId ],
+        [cancelCode, cancelReason, rideId],
       );
 
       await connection.commit();

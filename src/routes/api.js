@@ -133,11 +133,8 @@ router.post("/payment-success", auth, BookingController.paymentSuccess);
 router.post("/payment-failed", auth, BookingController.paymentFailed);
 
 // router.post("/bookings/:bookingId/refund", auth, BookingController.refund);
-
 // router.post("/bookings/:id/accept", auth, BookingController.acceptUserBooking);
-
 // router.post("/bookings/:id/reject", auth, BookingController.rejectUserBooking);
-
 // router.post("/bookings/:id/cancel", auth, BookingController.cancelUserBooking);
 
 // Messages
@@ -156,6 +153,6 @@ router.post("/ratings", auth, storeRating);
 //Push notifications
 router.post("/notifications/devices", auth, registerDevice);
 router.post("/notifications/test", auth, sendTestNotification);
-router.post("/notifications/broadcast", broadcastNotification);
+router.post("/notifications/broadcast", auth, broadcastNotification);
 
 module.exports = router;
