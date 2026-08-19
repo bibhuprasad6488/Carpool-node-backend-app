@@ -48,7 +48,7 @@ router.post(
     uploadCloudinary.fields([
         { name: "profile_picture", maxCount: 1 },
     ]),
-    UserController.updateUserDetails,
+    UserController.uploadProfilePicture,
 );
 router.get("/get-me", auth, UserController.getLoginUser);
 router.get("/profile-status", auth, UserController.getProfileStatus);
