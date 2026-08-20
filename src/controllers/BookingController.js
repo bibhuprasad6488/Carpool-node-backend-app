@@ -909,8 +909,6 @@ exports.cancelBooking = async (req, res) => {
 };
 
 
-};
-
 // private function for format
 function rideFormatData(ride) {
   return {
