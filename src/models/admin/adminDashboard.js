@@ -332,8 +332,7 @@ exports.getAnalyticsData = async function (query = {}) {
   };
 };
 
-exports.getGrowthAndCorridorsData = async function (query = {}) {
-  // 1. User Acquisition Growth (Last 30 Days)
+exports.getGrowthAndCorridorsData = async function () {
   const [userGrowthRows] = await db.execute(`
     SELECT 
       COUNT(CASE WHEN role = '3' AND created_at >= NOW() - INTERVAL 30 DAY THEN 1 END) AS new_riders_30d,

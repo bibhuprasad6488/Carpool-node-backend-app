@@ -5,7 +5,6 @@ const logger = require("../config/logger");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const db = require("../config/db");
-const { sendUserNotification } = require("../utils/notificationService");
 const { sendNotificationToUser } = require("../services/pushNotification.service");
 const NOTIFICATION_TYPES = require("../constants/notificationTypes");
 // const transporter = require("../config/mail");

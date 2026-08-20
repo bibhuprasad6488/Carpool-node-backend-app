@@ -130,6 +130,7 @@ const getNotificationStats = async (req, res) => {
   }
 };
 
+
 module.exports = {
   getAllDevices,
   getDeviceById,

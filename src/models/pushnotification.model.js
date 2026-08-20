@@ -412,8 +412,89 @@ const getNotificationStats = async () => {
 const deleteDeviceByInstallationId = async (installationId) => {
   return await db.execute(
     `DELETE FROM notification_devices WHERE installation_id = ?`,
-    [installationId]
+    [installationId],
   );
+};
+
+const getUserNotifications = async ({
+  userId,
+  page = 1,
+  limit = 20,
+  unreadOnly = false,
+}) => {
+  const offset = (page - 1) * limit;
+  let whereClause = "WHERE user_id = ?";
+  const params = [userId];
+
+  if (unreadOnly) {
+    whereClause += " AND is_read = 0";
+  }
+
+  // Get notifications list
+  const [notifications] = await db.query(
+    `SELECT id, type, title, body, data, is_read, read_at, created_at 
+       FROM notifications 
+       ${whereClause} 
+       ORDER BY created_at DESC 
+       LIMIT ? OFFSET ?`,
+    [...params, Number(limit), Number(offset)],
+  );
+
+  // Parse JSON data safely
+  const formattedNotifications = notifications.map((n) => ({
+    ...n,
+    is_read: Boolean(n.is_read),
+    data: typeof n.data === "string" ? JSON.parse(n.data || "{}") : n.data,
+  }));
+
+  // Get total count for pagination
+  const [[{ total }]] = await db.query(
+    `SELECT COUNT(id) AS total FROM notifications ${whereClause}`,
+    params,
+  );
+
+  // Get total unread count for badge counter
+  const [[{ unreadCount }]] = await db.query(
+    `SELECT COUNT(id) AS unreadCount FROM notifications WHERE user_id = ? AND is_read = 0`,
+    [userId],
+  );
+
+  return {
+    notifications: formattedNotifications,
+    unreadCount,
+    pagination: {
+      total,
+      page: Number(page),
+      limit: Number(limit),
+      totalPages: Math.ceil(total / limit),
+    },
+  };
+};
+
+const markAsRead = async (userId, notificationIds) => {
+  const ids = Array.isArray(notificationIds)
+    ? notificationIds
+    : [notificationIds];
+  if (ids.length === 0) return false;
+  const placeholders = ids.map(() => "?").join(",");
+  const [result] = await db.query(
+    `UPDATE notifications 
+       SET is_read = 1, read_at = NOW() 
+       WHERE user_id = ? AND id IN (${placeholders}) AND is_read = 0`,
+    [userId, ...ids],
+  );
+
+  return result.affectedRows;
+};
+
+const markAllAsRead = async (userId) => {
+  const [result] = await db.query(
+    `UPDATE notifications 
+       SET is_read = 1, read_at = NOW() 
+       WHERE user_id = ? AND is_read = 0`,
+    [userId],
+  );
+  return result.affectedRows;
 };
 
 module.exports = {
@@ -427,5 +508,8 @@ module.exports = {
   getNotificationById,
   getAllNotifications,
   getNotificationStats,
-  deleteDeviceByInstallationId
+  deleteDeviceByInstallationId,
+  getUserNotifications,
+  markAsRead,
+  markAllAsRead,
 };

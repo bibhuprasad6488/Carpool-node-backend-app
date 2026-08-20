@@ -62,7 +62,7 @@ const {
   getSettings,
 } = require("../controllers/admin/siteSetting.controller");
 const { handleExpiredRides } = require("../tasks/expireRidesTask");
-const { processDriverPayoutAdmin, getPayouts, getPayoutById, processPayout } = require("../controllers/admin/DriverPayout.controller");
+const { getPayouts, getPayoutById, processPayout } = require("../controllers/admin/DriverPayout.controller");
 const { getAllDevices, getAllNotifications, getDeviceById, getNotificationById, getNotificationStats } = require("../controllers/admin/adminNotification.controller");
 
 router.get("/dashboard", auth, isAdmin, (req, res) => {
