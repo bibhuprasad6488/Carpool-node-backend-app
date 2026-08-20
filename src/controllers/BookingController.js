@@ -740,41 +740,211 @@ exports.getBookingDetailsById = async (req, res) => {
       message: err.message,
     });
   }
+};
 
 
-  // private function for format
-  function rideFormatData(ride) {
-    return {
-      id: ride.id,
-      driver_id: ride.driver_id,
-      vehicle_id: ride.vehicle_id,
-      source_address: ride.source_address,
-      source_place_id: ride.source_place_id,
-      destination_address: ride.destination_address,
-      destination_place_id: ride.destination_place_id,
-      source_lat: ride.source_lat,
-      source_lng: ride.source_lng,
-      destination_lat: ride.destination_lat,
-      destination_lng: ride.destination_lng,
-      ride_date: ride.ride_date,
-      departure_time: ride.departure_time,
-      polyline: ride.polyline,
-      distance_meters: ride.distance_meters,
-      duration_seconds: ride.duration_seconds,
-      estimated_reach_time: ride.estimated_reach_time,
-      pet_allowed: ride.pet_allowed,
-      smoking_allowed: ride.smoking_allowed,
-      instant_booking: ride.instant_booking,
-      max_two_in_back: ride.max_two_in_back,
-      price_per_seat: ride.price_per_seat,
-      total_seats: ride.total_seats,
-      available_seats: ride.available_seats,
-      status: ride.status,
-      // total_price: ride.total_price,
-      vehicle_details: ride.vehicle_details,
-      driver_details: ride.driver_details,
-      // route_points: ride.route_points
-    };
+exports.cancelBooking = async (req, res) => {
+  const connection = await db.getConnection();
+
+  const { bookingId, cancelReason } = req.body;
+  const userId = req.user.id;
+
+  try {
+
+    if (!bookingId) {
+      return res.status(422).json({
+        status: "error",
+        message: "Booking ID is required.",
+      });
+    }
+
+    if (!cancelReason) {
+      return res.status(422).json({
+        status: "error",
+        message: "Cancel Reason is required",
+      });
+    }
+
+    await connection.beginTransaction();
+    await connection.query("SET time_zone = '+05:30'");
+
+    // Lock Booking
+    const [bookings] = await connection.query(
+      `SELECT *
+            FROM ride_bookings
+            WHERE id = ?
+            FOR UPDATE`,
+      [bookingId],
+    );
+
+    if (bookings.length === 0) {
+      await connection.rollback();
+
+      return res.status(404).json({
+        status: "error",
+        message: "Booking not found.",
+      });
+    }
+
+    const booking = bookings[0];
+
+    // Lock Payment
+    const [payments] = await connection.query(
+      `SELECT *
+            FROM payments
+            WHERE booking_id = ?
+            FOR UPDATE`,
+      [booking.id],
+    );
+
+    if (payments.length === 0) {
+      await connection.rollback();
+
+      return res.status(404).json({
+        status: "error",
+        message: "Payment record not found.",
+      });
+    }
+
+    const payment = payments[0];
+
+    // Lock Ride
+    const [rides] = await connection.query(
+      `SELECT *
+        FROM rides
+        WHERE id = ?
+        FOR UPDATE`,
+      [booking.ride_id],
+    );
+
+    if (rides.length === 0) {
+      await connection.rollback();
+
+      return res.status(404).json({
+        status: "error",
+        message: "Ride not found.",
+      });
+    }
+
+    const ride = rides[0];
+
+    if (userId != booking.passenger_id) {
+      await connection.rollback();
+      return res.status(500).json({
+        status: "error",
+        message: "Unauthorize access"
+      });
+    }
+
+    // Already Cancelled
+    if (booking.status === "cancelled") {
+      await connection.rollback();
+
+      return res.status(400).json({
+        status: "error",
+        message: "Booking already cancelled.",
+      });
+    }
+
+    const reasonCode = 'PASSENGER_CANCEL_BOOKING';
+
+    // Procced with cancel 
+    await connection.query(
+      `UPDATE ride_bookings
+            SET
+            status = 'cancelled',
+              reason_of_cancel = ?,
+              cancel_reason = ?,
+              cancelled_at = NOW(),
+              updated_at = NOW()
+              WHERE id = ?`,
+      [
+        cancelReason,
+        reasonCode,
+        bookingId,
+      ],
+    );
+
+    // Restore seat
+    await connection.query(
+      `UPDATE rides
+            SET available_seats = available_seats + ?,
+                updated_at = NOW()
+            WHERE id = ?`,
+      [booking.seats, booking.ride_id],
+    );
+
+
+
+    if (payment.status === "paid") {
+      // initiate refund
+    }
+
+
+    await connection.commit();
+
+    const [updatedRide] = await connection.query(
+      "SELECT id, available_seats FROM rides WHERE id=?",
+      [booking.ride_id],
+    );
+
+    // Socket.IO Broadcast
+    const io = getIO();
+    io.to(`ride_${ride.id}`).emit("ride-seat-updated", updatedRide[0]);
+
+
+    return res.json({
+      status: "success",
+      message: "Booking cancelled successfully",
+    });
+  } catch (err) {
+    await connection.rollback();
+    // console.error(err);
+    logger.error(err);
+
+    return res.status(500).json({
+      status: "error",
+      message: err.message,
+    });
+
+  } finally {
+    connection.release()
   }
 };
+
+
+// private function for format
+function rideFormatData(ride) {
+  return {
+    id: ride.id,
+    driver_id: ride.driver_id,
+    vehicle_id: ride.vehicle_id,
+    source_address: ride.source_address,
+    source_place_id: ride.source_place_id,
+    destination_address: ride.destination_address,
+    destination_place_id: ride.destination_place_id,
+    source_lat: ride.source_lat,
+    source_lng: ride.source_lng,
+    destination_lat: ride.destination_lat,
+    destination_lng: ride.destination_lng,
+    ride_date: ride.ride_date,
+    departure_time: ride.departure_time,
+    polyline: ride.polyline,
+    distance_meters: ride.distance_meters,
+    duration_seconds: ride.duration_seconds,
+    estimated_reach_time: ride.estimated_reach_time,
+    pet_allowed: ride.pet_allowed,
+    smoking_allowed: ride.smoking_allowed,
+    instant_booking: ride.instant_booking,
+    max_two_in_back: ride.max_two_in_back,
+    price_per_seat: ride.price_per_seat,
+    total_seats: ride.total_seats,
+    available_seats: ride.available_seats,
+    status: ride.status,
+    // total_price: ride.total_price,
+    vehicle_details: ride.vehicle_details,
+    driver_details: ride.driver_details,
+    // route_points: ride.route_points
+  };
+}
 

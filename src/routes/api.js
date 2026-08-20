@@ -132,6 +132,7 @@ router.get("/get-booking-details/:bookingId", auth, BookingController.getBooking
 router.post("/create-booking", auth, BookingController.store);
 router.post("/payment-success", auth, BookingController.paymentSuccess);
 router.post("/payment-failed", auth, BookingController.paymentFailed);
+router.post("/passenger/cancel-booking", auth, BookingController.cancelBooking);
 
 // router.post("/bookings/:bookingId/refund", auth, BookingController.refund);
 // router.post("/bookings/:id/accept", auth, BookingController.acceptUserBooking);
