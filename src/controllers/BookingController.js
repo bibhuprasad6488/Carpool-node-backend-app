@@ -6,13 +6,10 @@ const Ride = require("../models/Ride");
 const Conversation = require("../models/Conversation");
 const logger = require("../config/logger");
 const User = require("../models/User");
-const {
-  sendAdminNotification,
-  NOTIFICATION_TYPES,
-} = require("../utils/notificationService");
 const Vehicle = require("../models/Vehicle");
 const {
   sendNotificationToUser,
+  sendNotificationToAdmins,
 } = require("../services/pushNotification.service");
 const validatePaymentVerification =
   require("razorpay/dist/utils/razorpay-utils").validatePaymentVerification;
@@ -199,15 +196,14 @@ exports.store = async (req, res) => {
 
     connection.release();
 
-    sendAdminNotification({
-      type: NOTIFICATION_TYPES.RIDE_BOOKED,
+    sendNotificationToAdmins({
       title: "Ride Seat Booked 🎟️",
-      message: `User ${req.user.name || req.user.id} booked a seat on Ride #${ride_id}.`,
+      body: `User ${req.user.name || req.user.id} booked a seat on Ride #${ride_id}.`,
       data: {
         bookingId: bookingId,
         rideId: ride_id,
         passengerId: req.user.id,
-        order_id: order.id,
+        orderId: order.id,
         amount: totalPrice,
       },
     });
@@ -668,8 +664,6 @@ exports.updatePaymentsRecord = async (req, res) => {
   }
 };
 
-
-
 exports.getMyBookedRides = async (req, res, next) => {
   try {
     const passengerId = req.user?.id || req.query.passengerId;
@@ -712,7 +706,7 @@ exports.getBookingDetailsById = async (req, res) => {
     if (userId != booking.passenger_id) {
       return res.status(500).json({
         status: "error",
-        message: "Unauthorize access"
+        message: "Unauthorize access",
       });
     }
     const ride = await Ride.rideDetailsById(booking.ride_id);
@@ -724,12 +718,14 @@ exports.getBookingDetailsById = async (req, res) => {
       ride.driver_details = await User.getUserWithDetails(ride.driver_id);
     }
 
-    booking.passenger_details = await User.getUserWithDetails(booking.passenger_id);
+    booking.passenger_details = await User.getUserWithDetails(
+      booking.passenger_id,
+    );
 
     return res.status(200).json({
       status: "success",
       ride: rideFormatData(ride),
-      data: booking
+      data: booking,
     });
   } catch (err) {
     // console.error(err);
@@ -740,41 +736,39 @@ exports.getBookingDetailsById = async (req, res) => {
       message: err.message,
     });
   }
-
-
-  // private function for format
-  function rideFormatData(ride) {
-    return {
-      id: ride.id,
-      driver_id: ride.driver_id,
-      vehicle_id: ride.vehicle_id,
-      source_address: ride.source_address,
-      source_place_id: ride.source_place_id,
-      destination_address: ride.destination_address,
-      destination_place_id: ride.destination_place_id,
-      source_lat: ride.source_lat,
-      source_lng: ride.source_lng,
-      destination_lat: ride.destination_lat,
-      destination_lng: ride.destination_lng,
-      ride_date: ride.ride_date,
-      departure_time: ride.departure_time,
-      polyline: ride.polyline,
-      distance_meters: ride.distance_meters,
-      duration_seconds: ride.duration_seconds,
-      estimated_reach_time: ride.estimated_reach_time,
-      pet_allowed: ride.pet_allowed,
-      smoking_allowed: ride.smoking_allowed,
-      instant_booking: ride.instant_booking,
-      max_two_in_back: ride.max_two_in_back,
-      price_per_seat: ride.price_per_seat,
-      total_seats: ride.total_seats,
-      available_seats: ride.available_seats,
-      status: ride.status,
-      // total_price: ride.total_price,
-      vehicle_details: ride.vehicle_details,
-      driver_details: ride.driver_details,
-      // route_points: ride.route_points
-    };
-  }
 };
 
+// private function for format
+function rideFormatData(ride) {
+  return {
+    id: ride.id,
+    driver_id: ride.driver_id,
+    vehicle_id: ride.vehicle_id,
+    source_address: ride.source_address,
+    source_place_id: ride.source_place_id,
+    destination_address: ride.destination_address,
+    destination_place_id: ride.destination_place_id,
+    source_lat: ride.source_lat,
+    source_lng: ride.source_lng,
+    destination_lat: ride.destination_lat,
+    destination_lng: ride.destination_lng,
+    ride_date: ride.ride_date,
+    departure_time: ride.departure_time,
+    polyline: ride.polyline,
+    distance_meters: ride.distance_meters,
+    duration_seconds: ride.duration_seconds,
+    estimated_reach_time: ride.estimated_reach_time,
+    pet_allowed: ride.pet_allowed,
+    smoking_allowed: ride.smoking_allowed,
+    instant_booking: ride.instant_booking,
+    max_two_in_back: ride.max_two_in_back,
+    price_per_seat: ride.price_per_seat,
+    total_seats: ride.total_seats,
+    available_seats: ride.available_seats,
+    status: ride.status,
+    // total_price: ride.total_price,
+    vehicle_details: ride.vehicle_details,
+    driver_details: ride.driver_details,
+    // route_points: ride.route_points
+  };
+}

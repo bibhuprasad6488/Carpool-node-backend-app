@@ -1,7 +1,8 @@
 const { validationResult } = require("express-validator");
 const ConversationManagement = require("../../models/admin/Conversation");
 const logger = require("../../config/logger");
-const { sendAdminNotification, NOTIFICATION_TYPES } = require("../../utils/notificationService");
+const NOTIFICATION_TYPES = require("../../constants/notificationTypes");
+const { sendNotificationToAdmins } = require("../../services/pushNotification.service");
 
 exports.createConversation = async (req, res) => {
   try {
@@ -175,14 +176,18 @@ exports.deleteSingleMessage = async (req, res) => {
       });
     }
 
-    sendAdminNotification({
-      type: NOTIFICATION_TYPES.EMERGENCY,
-      title: "Message Deleted by Admin..!!",
-      message: `A message deleted by admin.`,
+    sendNotificationToAdmins({
+      type: NOTIFICATION_TYPES.CONVERSATION,
+      title: "Message Deleted by Admin 🗑️",
+      body: "A message was deleted by an admin.",
       data: {
-        messageId: messageId 
+        messageId: messageId,
+        deletedBy: req.user.id,
       },
-    });
+    }).catch((err) =>
+      console.error("[FCM Admin Message Deleted Notification Error]", err),
+    );
+
     return res.status(200).json({
       success: true,
       message: "Message deleted successfully",

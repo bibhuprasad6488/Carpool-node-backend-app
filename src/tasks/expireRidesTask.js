@@ -1,9 +1,7 @@
 // tasks/expireRidesTask.js
 const db = require("../config/db");
-const {
-  sendUserNotification,
-  NOTIFICATION_TYPES,
-} = require("../utils/notificationService");
+const NOTIFICATION_TYPES = require("../constants/notificationTypes");
+const { sendNotificationToUser } = require("../services/pushNotification.service");
 
 const handleExpiredRides = async () => {
   let connection;
@@ -115,11 +113,11 @@ const handleExpiredRides = async () => {
   // 6. Notify Passengers
   for (const booking of bookingsToProcess) {
     try {
-      await sendUserNotification({
+      await sendNotificationToUser({
         userId: booking.passenger_id,
         type: NOTIFICATION_TYPES.RIDE_CANCELLED || "RIDE_CANCELLED",
         title: "Ride Expired & Cancelled",
-        message:
+        body:
           "The driver did not start the ride on time. Your booking has been cancelled and any payment will be refunded.",
         data: {
           rideId: booking.ride_id,
@@ -138,11 +136,11 @@ const handleExpiredRides = async () => {
   // 7. Notify Drivers
   for (const ride of ridesToNotify) {
     try {
-      await sendUserNotification({
+      await sendNotificationToUser({
         userId: ride.driver_id,
         type: NOTIFICATION_TYPES.RIDE_CANCELLED || "RIDE_CANCELLED",
         title: "Ride Expired due to Inactivity",
-        message:
+        body:
           "You did not start your scheduled ride within the 6-hour window. It has been marked as expired.",
         data: { rideId: ride.id },
       });
@@ -153,6 +151,7 @@ const handleExpiredRides = async () => {
       );
     }
   }
+
 };
 
 module.exports = {

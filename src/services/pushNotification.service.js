@@ -91,8 +91,8 @@ const sendNotificationToUser = async ({
             await notificationRepository.deleteDeviceByInstallationId(
               device.installation_id,
             );
-          } else if (notificationRepository.deactivateDeviceToken) {
-            await notificationRepository.deactivateDeviceToken(
+          } else if (notificationRepository.deactivateDevice) {
+            await notificationRepository.deactivateDevice(
               device.installation_id,
             );
           }
@@ -258,8 +258,135 @@ const sendBroadcast = async ({ title, body, type = "SYSTEM", data = {} }) => {
   };
 };
 
+const sendNotificationToAdmins = async ({
+  title,
+  body,
+  type = "ADMIN_ALERT",
+  data = {},
+}) => {
+  const adminDevices = await notificationRepository.getAdminDevices();
+
+  if (!adminDevices.length) {
+    return {
+      success: true,
+      sent: 0,
+      failed: 0,
+      message: "No active admin devices found",
+    };
+  }
+
+  const adminUserIds = [...new Set(adminDevices.map((d) => d.user_id))];
+
+  for (const adminId of adminUserIds) {
+    try {
+      await notificationRepository.createNotification({
+        userId: adminId,
+        type,
+        title,
+        body,
+        data,
+      });
+    } catch (err) {
+      console.error(
+        `Failed to store admin notification for user ${adminId}:`,
+        err,
+      );
+    }
+  }
+
+  const results = [];
+
+  for (const device of adminDevices) {
+    try {
+      const messageId = await sendPushNotification({
+        token: device.push_token,
+        title,
+        body,
+        data: {
+          type,
+          ...data,
+        },
+      });
+
+      results.push({
+        installationId: device.installation_id,
+        success: true,
+        messageId,
+      });
+    } catch (error) {
+      const isUnregistered =
+        error.code === "messaging/registration-token-not-registered" ||
+        error.errorInfo?.code ===
+          "messaging/registration-token-not-registered" ||
+        error.code === "messaging/invalid-registration-token";
+
+      if (isUnregistered) {
+        await notificationRepository.deactivateDevice?.(device.installation_id);
+      }
+
+      results.push({
+        installationId: device.installation_id,
+        success: false,
+        error: error.message,
+      });
+    }
+  }
+
+  return {
+    success: true,
+    sent: results.filter((item) => item.success).length,
+    failed: results.filter((item) => !item.success).length,
+    results,
+  };
+};
+
+const sendNotificationToRidePassengers = async ({
+  rideId,
+  title,
+  body,
+  type = "SYSTEM",
+  data = {},
+}) => {
+  // 1. Get all active passenger user_ids registered for this ride
+  const [passengers] = await db.execute(
+    `SELECT DISTINCT passenger_id 
+     FROM ride_bookings 
+     WHERE ride_id = ? 
+       AND status IN ('confirmed', 'accepted', 'ongoing', 'completed')`,
+    [rideId],
+  );
+
+  if (!passengers.length) {
+    return { success: true, count: 0 };
+  }
+
+  // 2. Dispatch FCM push notifications concurrently
+  const pushPromises = passengers.map((p) =>
+    sendNotificationToUser({
+      userId: p.passenger_id,
+      title,
+      body,
+      type,
+      data: {
+        rideId,
+        ...data,
+      },
+    }).catch((err) =>
+      console.error(
+        `[FCM Ride Passenger Notification Error] Passenger ${p.passenger_id}:`,
+        err,
+      ),
+    ),
+  );
+
+  await Promise.all(pushPromises);
+  return { success: true, count: passengers.length };
+};
+
 module.exports = {
   sendPushNotification,
   sendNotificationToUser,
   sendBroadcast,
+  sendNotificationToAdmins,
+  sendNotificationToRidePassengers,
 };
