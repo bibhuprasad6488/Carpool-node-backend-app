@@ -495,6 +495,20 @@ const markAllAsRead = async (userId) => {
   return result.affectedRows;
 };
 
+// In pushnotification.model.js
+const getAdminDevices = async () => {
+  const [rows] = await db.execute(`
+    SELECT nd.id, nd.user_id, nd.installation_id, nd.push_token, nd.platform
+    FROM notification_devices nd
+    INNER JOIN users u ON u.id = nd.user_id
+    WHERE u.role = 1              -- Admin filter
+      AND nd.is_active = 1
+      AND nd.push_token IS NOT NULL
+      AND nd.push_token != ''
+  `);
+  return rows;
+};
+
 module.exports = {
   registerDevice,
   getDevicesByUserId,
@@ -510,4 +524,5 @@ module.exports = {
   getUserNotifications,
   markAsRead,
   markAllAsRead,
+  getAdminDevices
 };

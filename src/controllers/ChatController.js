@@ -7,10 +7,10 @@ const Vehicle = require("../models/Vehicle");
 const User = require("../models/User");
 const logger = require("../config/logger");
 const {
-  NOTIFICATION_TYPES,
-  sendAdminNotification,
-} = require("../utils/notificationService");
-const { sendNotificationToUser } = require("../services/pushNotification.service");
+  sendNotificationToUser,
+  sendNotificationToAdmins,
+} = require("../services/pushNotification.service");
+const NOTIFICATION_TYPES = require("../constants/notificationTypes");
 
 exports.conversation = async (req, res) => {
   try {
@@ -227,15 +227,16 @@ exports.send = async (req, res) => {
     // ADMIN NOTIFICATION
     // ─────────────────────────────────────
 
-    sendAdminNotification({
-      type: NOTIFICATION_TYPES.CONVERSATION,
-      title: "New Message Received",
-      message: `New message from ${req.user.id}.`,
+    sendNotificationToAdmins({
+      title: "New Message Received 💬",
+      body: `New message from ${req.user.name || req.user.id}.`,
       data: {
         conversationId: conversation_id,
-        message: newMessage,
+        messageId: newMessage.id || newMessage._id,
+        senderId: req.user.id,
       },
-    });
+    }).catch((err) => console.error("[FCM Admin Notification Error]", err));
+
 
     return res.json({
       status: "success",

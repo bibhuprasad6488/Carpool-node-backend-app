@@ -21,7 +21,6 @@ const {
   markAsRead,
   markAllAsRead,
 } = require("../controllers/notification.controller");
-const isAdmin = require("../middleware/admin");
 const { getEarnings } = require("../controllers/earningsController");
 
 router.get("/get-roles", UserController.getRoles);
@@ -164,7 +163,7 @@ router.post("/notifications/test", auth, sendTestNotification);
 router.post(
   "/admin/notifications/broadcast",
   auth,
-  isAdmin,
+//   isAdmin,
   broadcastNotification,
 );
 

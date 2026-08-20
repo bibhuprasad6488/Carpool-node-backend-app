@@ -1,9 +1,10 @@
 // tasks/expireRidesTask.js
 const db = require("../config/db");
-const { sendUserNotification } = require("../utils/notificationService");
+const NOTIFICATION_TYPES = require("../constants/notificationTypes");
 const {
-  sendRideCancelledEmail,
-} = require("../utils/emailService");
+  sendNotificationToUser,
+} = require("../services/pushNotification.service");
+const { sendRideCancelledEmail } = require("../utils/emailService");
 
 const handleExpiredRides = async () => {
   let connection;
@@ -36,7 +37,7 @@ const handleExpiredRides = async () => {
     // 2. Bulk update expired rides
     await connection.query(
       `UPDATE rides SET status = 'cancelled', updated_at = NOW() WHERE id IN (?)`,
-      [expiredRideIds]
+      [expiredRideIds],
     );
 
     // 3. Fetch affected bookings
@@ -63,7 +64,7 @@ const handleExpiredRides = async () => {
 
         FOR UPDATE
         `,
-      [expiredRideIds]
+      [expiredRideIds],
     );
 
     if (bookings.length > 0) {
@@ -72,7 +73,7 @@ const handleExpiredRides = async () => {
       // 4. Bulk update bookings to cancelled
       await connection.query(
         `UPDATE ride_bookings SET status = 'cancelled', cancel_reason = 'RIDE_EXPIRED_DRIVER_NO_SHOW', cancelled_at = NOW() WHERE id IN (?)`,
-        [bookingIds]
+        [bookingIds],
       );
     }
 
@@ -83,7 +84,10 @@ const handleExpiredRides = async () => {
     bookingsToProcess = bookings;
   } catch (error) {
     if (connection) await connection.rollback();
-    console.error("❌ [CRON ERROR] DB transaction in expireRidesTask failed:", error);
+    console.error(
+      "❌ [CRON ERROR] DB transaction in expireRidesTask failed:",
+      error,
+    );
     return;
   } finally {
     if (connection) connection.release();
@@ -95,14 +99,12 @@ const handleExpiredRides = async () => {
 
   // 5. Notify Passengers
   for (const booking of bookingsToProcess) {
-    // Push notification
     try {
-      await sendUserNotification({
+      await sendNotificationToUser({
         userId: booking.passenger_id,
-        type: "RIDE_CANCELLED",
-        title: "Ride Expired & Cancelled",
-        message:
-          "The driver did not start the ride on time. It has been automatically cancelled.",
+        type: NOTIFICATION_TYPES.RIDE_CANCELLED || "RIDE_CANCELLED",
+        title: "Ride Expired & Cancelled ❌",
+        body: "The driver did not start the ride on time. It has been automatically cancelled.",
         data: {
           rideId: booking.ride_id,
           bookingId: booking.id,
@@ -111,7 +113,7 @@ const handleExpiredRides = async () => {
     } catch (err) {
       console.error(
         `Failed to notify passenger for booking ${booking.id}:`,
-        err
+        err,
       );
     }
 
@@ -128,7 +130,7 @@ const handleExpiredRides = async () => {
     } catch (err) {
       console.error(
         `Failed to send cancellation email for booking ${booking.id}:`,
-        err
+        err,
       );
     }
   }
@@ -136,15 +138,20 @@ const handleExpiredRides = async () => {
   // 6. Notify Drivers
   for (const ride of ridesToNotify) {
     try {
-      await sendUserNotification({
+      await sendNotificationToUser({
         userId: ride.driver_id,
-        type: "RIDE_CANCELLED",
-        title: "Ride Cancelled due to Inactivity",
-        message: "You did not start your scheduled ride on time. It has been marked as cancelled.",
-        data: { rideId: ride.id },
+        type: NOTIFICATION_TYPES.RIDE_CANCELLED || "RIDE_CANCELLED",
+        title: "Ride Cancelled due to Inactivity ⏰",
+        body: "You did not start your scheduled ride on time. It has been marked as cancelled.",
+        data: {
+          rideId: ride.id,
+        },
       });
     } catch (err) {
-      console.error(`Failed to notify driver ${ride.driver_id} for ride ${ride.id}:`, err);
+      console.error(
+        `Failed to notify driver ${ride.driver_id} for ride ${ride.id}:`,
+        err,
+      );
     }
   }
 };
