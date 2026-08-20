@@ -80,7 +80,6 @@ exports.edit = async (req, res) => {
 exports.getRoles = async (req, res) => {
   try {
     const { name } = req.query;
-    console.log(name);
     const roles = await Role.getAllRoles(name);
     return res.json(roles);
   } catch (err) {

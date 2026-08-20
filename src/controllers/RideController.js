@@ -548,7 +548,6 @@ exports.cancelRide = async (req, res) => {
       [rideId],
     );
 
-    console.log(bookings);
 
     for (const booking of bookings) {
       try {
@@ -564,6 +563,17 @@ exports.cancelRide = async (req, res) => {
             screen: "booking",
           },
         });
+
+        await sendNotificationToAdmins({
+          rideId:rideId,
+          title: "Ride cancelled by Driver🚫",
+          body: `A ride from ${ride.source_address} to ${ride.destination_address} has been cancelled by the driver.`,
+          data: {
+            ride_id: rideId,
+            driver_id: driverId,
+            bookings: bookings
+          }
+        })
         console.log("Notification sent");
       } catch (error) {
         console.error(
