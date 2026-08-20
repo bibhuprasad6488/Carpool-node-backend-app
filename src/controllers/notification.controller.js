@@ -212,9 +212,74 @@ const broadcastNotification = async (req, res) => {
   }
 };
 
+const getNotifications = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { page = 1, limit = 20, unreadOnly = "false" } = req.query;
+
+    const result = await notificationRepository.getUserNotifications({
+      userId,
+      page: parseInt(page, 10),
+      limit: parseInt(limit, 10),
+      unreadOnly: unreadOnly === "true",
+    });
+
+    return res.status(200).json({
+      status: "success",
+      message: "Notifications retrieved successfully",
+      data: result,
+    });
+  } catch (error) {
+    console.error("[GET NOTIFICATIONS ERROR]", error);
+    return res.status(500).json({ status: "error", message: "Server error" });
+  }
+};
+
+const markAsRead = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { notificationIds } = req.body;
+
+    if (!notificationIds) {
+      return res.status(422).json({
+        status: "error",
+        message: "notificationIds parameter is required",
+      });
+    }
+
+    const updatedRows = await notificationRepository.markAsRead(userId, notificationIds);
+
+    return res.status(200).json({
+      status: "success",
+      message: `${updatedRows} notification(s) marked as read`,
+    });
+  } catch (error) {
+    console.error("[MARK READ ERROR]", error);
+    return res.status(500).json({ status: "error", message: "Server error" });
+  }
+};
+
+const markAllAsRead = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const updatedRows = await notificationRepository.markAllAsRead(userId);
+
+    return res.status(200).json({
+      status: "success",
+      message: `All notifications marked as read (${updatedRows} updated)`,
+    });
+  } catch (error) {
+    console.error("[MARK ALL READ ERROR]", error);
+    return res.status(500).json({ status: "error", message: "Server error" });
+  }
+};
+
 module.exports = {
   registerDevice,
   sendTestNotificationToUser,
   sendTestNotification,
-  broadcastNotification
+  broadcastNotification,
+  getNotifications,
+  markAsRead,
+  markAllAsRead
 };

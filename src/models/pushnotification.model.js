@@ -3,77 +3,75 @@ const db = require("../config/db");
 const registerDevice = async ({
   userId,
   installationId,
-  pushToken,
+  pushToken = null,
   platform,
+  deviceType = null,
+  browser = null,
+  appVersion = null,
+  permissionStatus = "default",
 }) => {
-  // Prevent the same FCM token from being active
-  // on another installation.
-  await db.execute(
-    `
-      UPDATE notification_devices
-      SET is_active = 0,
-          updated_at = NOW()
-      WHERE push_token = ?
-        AND installation_id != ?
-    `,
-    [pushToken, installationId],
-  );
-
-  const [existing] = await db.execute(
-    `
-      SELECT id
-      FROM notification_devices
-      WHERE installation_id = ?
-      LIMIT 1
-    `,
-    [installationId],
-  );
-
-  if (existing.length) {
+  // 1. Deactivate old/stale device records that share this same push token
+  if (pushToken) {
     await db.execute(
-      `
-    UPDATE notification_devices
-    SET
-      user_id = ?,
-      push_token = ?,
-      platform = ?,
-      is_active = 1,
-      last_registered_at = NOW(),
-      last_seen_at = NOW(),
-      updated_at = NOW()
-    WHERE installation_id = ?
-  `,
-      [userId, pushToken, platform, installationId],
+      `UPDATE notification_devices
+       SET is_active = 0,
+           updated_at = NOW()
+       WHERE push_token = ?
+         AND installation_id != ?`,
+      [pushToken, installationId],
     );
-
-    return {
-      id: existing[0].id,
-      userId,
-      installationId,
-      updated: true,
-    };
   }
 
+  // 2. Upsert (Insert or Update if installation_id exists)
   const [result] = await db.execute(
-    `
-      INSERT INTO notification_devices
-      (
-        user_id,
-        installation_id,
-        push_token,
-        platform,
-        is_active
-      )
-      VALUES (?, ?, ?, ?, 1)
-    `,
-    [userId, installationId, pushToken, platform],
+    `INSERT INTO notification_devices (
+       user_id,
+       installation_id,
+       push_token,
+       platform,
+       device_type,
+       browser,
+       app_version,
+       permission_status,
+       is_active,
+       last_registered_at,
+       last_seen_at,
+       created_at,
+       updated_at
+     )
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, NOW(), NOW(), NOW(), NOW())
+     ON DUPLICATE KEY UPDATE
+       user_id = VALUES(user_id),
+       push_token = VALUES(push_token),
+       platform = VALUES(platform),
+       device_type = VALUES(device_type),
+       browser = VALUES(browser),
+       app_version = VALUES(app_version),
+       permission_status = VALUES(permission_status),
+       is_active = 1,
+       last_registered_at = NOW(),
+       last_seen_at = NOW(),
+       updated_at = NOW()`,
+    [
+      userId,
+      installationId,
+      pushToken,
+      platform,
+      deviceType,
+      browser,
+      appVersion,
+      permissionStatus,
+    ],
   );
 
   return {
-    id: result.insertId,
+    id: result.insertId || result.id,
     userId,
     installationId,
-    created: true,
+    pushToken,
+    platform,
+    permissionStatus,
+    active: true,
   };
 };
 
@@ -409,6 +407,108 @@ const getNotificationStats = async () => {
   };
 };
 
+const deleteDeviceByInstallationId = async (installationId) => {
+  return await db.execute(
+    `DELETE FROM notification_devices WHERE installation_id = ?`,
+    [installationId],
+  );
+};
+
+const getUserNotifications = async ({
+  userId,
+  page = 1,
+  limit = 20,
+  unreadOnly = false,
+}) => {
+  const offset = (page - 1) * limit;
+  let whereClause = "WHERE user_id = ?";
+  const params = [userId];
+
+  if (unreadOnly) {
+    whereClause += " AND is_read = 0";
+  }
+
+  // Get notifications list
+  const [notifications] = await db.query(
+    `SELECT id, type, title, body, data, is_read, read_at, created_at 
+       FROM notifications 
+       ${whereClause} 
+       ORDER BY created_at DESC 
+       LIMIT ? OFFSET ?`,
+    [...params, Number(limit), Number(offset)],
+  );
+
+  // Parse JSON data safely
+  const formattedNotifications = notifications.map((n) => ({
+    ...n,
+    is_read: Boolean(n.is_read),
+    data: typeof n.data === "string" ? JSON.parse(n.data || "{}") : n.data,
+  }));
+
+  // Get total count for pagination
+  const [[{ total }]] = await db.query(
+    `SELECT COUNT(id) AS total FROM notifications ${whereClause}`,
+    params,
+  );
+
+  // Get total unread count for badge counter
+  const [[{ unreadCount }]] = await db.query(
+    `SELECT COUNT(id) AS unreadCount FROM notifications WHERE user_id = ? AND is_read = 0`,
+    [userId],
+  );
+
+  return {
+    notifications: formattedNotifications,
+    unreadCount,
+    pagination: {
+      total,
+      page: Number(page),
+      limit: Number(limit),
+      totalPages: Math.ceil(total / limit),
+    },
+  };
+};
+
+const markAsRead = async (userId, notificationIds) => {
+  const ids = Array.isArray(notificationIds)
+    ? notificationIds
+    : [notificationIds];
+  if (ids.length === 0) return false;
+  const placeholders = ids.map(() => "?").join(",");
+  const [result] = await db.query(
+    `UPDATE notifications 
+       SET is_read = 1, read_at = NOW() 
+       WHERE user_id = ? AND id IN (${placeholders}) AND is_read = 0`,
+    [userId, ...ids],
+  );
+
+  return result.affectedRows;
+};
+
+const markAllAsRead = async (userId) => {
+  const [result] = await db.query(
+    `UPDATE notifications 
+       SET is_read = 1, read_at = NOW() 
+       WHERE user_id = ? AND is_read = 0`,
+    [userId],
+  );
+  return result.affectedRows;
+};
+
+// In pushnotification.model.js
+const getAdminDevices = async () => {
+  const [rows] = await db.execute(`
+    SELECT nd.id, nd.user_id, nd.installation_id, nd.push_token, nd.platform
+    FROM notification_devices nd
+    INNER JOIN users u ON u.id = nd.user_id
+    WHERE u.role = 1              -- Admin filter
+      AND nd.is_active = 1
+      AND nd.push_token IS NOT NULL
+      AND nd.push_token != ''
+  `);
+  return rows;
+};
+
 module.exports = {
   registerDevice,
   getDevicesByUserId,
@@ -420,4 +520,9 @@ module.exports = {
   getNotificationById,
   getAllNotifications,
   getNotificationStats,
+  deleteDeviceByInstallationId,
+  getUserNotifications,
+  markAsRead,
+  markAllAsRead,
+  getAdminDevices
 };

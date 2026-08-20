@@ -4,15 +4,13 @@ const db = require("../config/db"); // mysql2/promise connection
 const Vehicle = require("../models/Vehicle");
 const User = require("../models/User");
 const ActivityLog = require("../models/admin/ActivityLog");
-const {
-  sendAdminNotification,
-  NOTIFICATION_TYPES,
-  sendRideRoomNotification,
-} = require("../utils/notificationService");
 const { logger } = require("@rudranarayan01/logaccent");
 const {
   sendNotificationToUser,
+  sendNotificationToAdmins,
+  sendNotificationToRidePassengers,
 } = require("../services/pushNotification.service");
+const NOTIFICATION_TYPES = require("../constants/notificationTypes");
 
 exports.index = async (req, res) => {
   try {
@@ -211,20 +209,21 @@ exports.store = async (req, res) => {
     status: "success",
   });
 
-  sendAdminNotification({
-    type: NOTIFICATION_TYPES.RIDE_PUBLISHED,
+  sendNotificationToAdmins({
     title: "New Ride Published 🚗",
-    message: `New trip published from ${source_address} to ${destination_address}.`,
+    body: `New trip published from ${source_address} to ${destination_address}.`,
     data: {
       rideId: rideId,
       driverId: driver_id,
     },
-  });
+  }).catch((err) =>
+    console.error("[FCM Admin Ride Published Notification Error]", err),
+  );
 
   try {
     await sendNotificationToUser({
       userId: driver_id,
-      type: "RIDE_PUBLISHED",
+      type: NOTIFICATION_TYPES.RIDE_PUBLISHED,
       title: "Ride published",
       body: "Your ride has been published successfully.",
       data: {
@@ -463,14 +462,30 @@ exports.completeRide = async (req, res) => {
     await Ride.completeRideWithBookings(rideId);
 
     // 3. Socket real-time broadcast
-    sendRideRoomNotification({
+    sendNotificationToRidePassengers({
       rideId,
       type: NOTIFICATION_TYPES.RIDE_COMPLETED,
       title: "Ride Completed 🎉",
-      message:
-        "You have reached your destination. Hope you had a great journey!",
-      data: { rideId, driverId },
-    });
+      body: "You have reached your destination. Hope you had a great journey!",
+      data: {
+        rideId,
+        driverId,
+      },
+    }).catch((err) =>
+      console.error("[FCM Ride Completed Notification Error]", err),
+    );
+
+    sendNotificationToAdmins({
+      type: NOTIFICATION_TYPES.RIDE_COMPLETED,
+      title: "Ride Completed 🎉",
+      body: `Ride #${rideId} has been successfully completed by driver #${driverId}.`,
+      data: {
+        rideId: rideId,
+        driverId: driverId,
+      },
+    }).catch((err) =>
+      console.error("[FCM Admin Ride Completed Notification Error]", err),
+    );
 
     return res.status(200).json({
       success: true,
@@ -488,7 +503,7 @@ exports.completeRide = async (req, res) => {
 exports.cancelRide = async (req, res) => {
   try {
     const { rideId } = req.params;
-    const { reason } = req.body; // Optional cancel reason from request body
+    const { reason } = req.body; 
     const driverId = req.user.id;
 
     const ride = await Ride.findRideByIdAndDriver(rideId, driverId);
@@ -533,11 +548,11 @@ exports.cancelRide = async (req, res) => {
       [rideId],
     );
 
-    console.log(bookings)
+    console.log(bookings);
 
     for (const booking of bookings) {
       try {
-        console.log("Notification sending")
+        console.log("Notification sending");
         await sendNotificationToUser({
           userId: booking.passenger_id,
           type: "RIDE_CANCELLED",
@@ -549,7 +564,7 @@ exports.cancelRide = async (req, res) => {
             screen: "booking",
           },
         });
-        console.log("Notification sent")
+        console.log("Notification sent");
       } catch (error) {
         console.error(
           `[RIDE_CANCELLED] Passenger notification failed for booking ${booking.id}:`,
@@ -557,6 +572,19 @@ exports.cancelRide = async (req, res) => {
         );
       }
     }
+
+    sendNotificationToAdmins({
+      type: NOTIFICATION_TYPES.RIDE_CANCELLED,
+      title: "Ride Cancelled ⚠️",
+      body: `Ride #${rideId} was cancelled. Reason: ${reason || "No reason provided"}.`,
+      data: {
+        rideId: rideId,
+        cancelledBy: req.user.id,
+        reason: reason || "",
+      },
+    }).catch((err) =>
+      console.error("[FCM Admin Ride Cancelled Notification Error]", err),
+    );
 
     return res.status(200).json({
       success: true,

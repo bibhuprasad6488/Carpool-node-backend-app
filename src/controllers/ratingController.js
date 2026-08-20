@@ -2,7 +2,8 @@
 const db = require("../config/db");
 const RatingModel = require("../models/ratingModel");
 const logger = require("../config/logger");
-const { sendAdminNotification, NOTIFICATION_TYPES } = require("../utils/notificationService");
+const { sendNotificationToAdmins } = require("../services/pushNotification.service");
+const NOTIFICATION_TYPES = require("../constants/notificationTypes");
 
 exports.storeRating = async (req, res) => {
   const connection = await db.getConnection();
@@ -30,15 +31,20 @@ exports.storeRating = async (req, res) => {
     await connection.beginTransaction();
 
     // 1. Verify the booking belongs to this passenger
-    const booking = await RatingModel.getBookingForRating(connection, booking_id, passengerId);
-    console.log(booking)
+    const booking = await RatingModel.getBookingForRating(
+      connection,
+      booking_id,
+      passengerId,
+    );
+    console.log(booking);
 
     if (!booking) {
       await connection.rollback();
       connection.release();
       return res.status(404).json({
         status: "error",
-        message: "Booking not found or you are not authorized to rate this ride.",
+        message:
+          "Booking not found or you are not authorized to rate this ride.",
       });
     }
 
@@ -53,7 +59,10 @@ exports.storeRating = async (req, res) => {
     }
 
     // 2. Check if a rating already exists for this specific booking
-    const existingRating = await RatingModel.findByBookingId(connection, booking_id);
+    const existingRating = await RatingModel.findByBookingId(
+      connection,
+      booking_id,
+    );
 
     if (existingRating) {
       await connection.rollback();
@@ -76,16 +85,18 @@ exports.storeRating = async (req, res) => {
     await connection.commit();
     connection.release();
 
-    sendAdminNotification({
+    sendNotificationToAdmins({
       type: NOTIFICATION_TYPES.RATINGS,
-      title: "New ratings ",
-      message: `New ratings from USER ${req.user.id}.`,
+      title: "New Rating Received ⭐",
+      body: `New rating received from User ${req.user.name || req.user.id}.`,
       data: {
         bookingId: booking_id,
-        ratings: rating,
-        review: review
+        rating: rating,
+        review: review || "",
       },
-    });
+    }).catch((err) =>
+      console.error("[FCM Admin Rating Notification Error]", err),
+    );
 
     return res.status(201).json({
       status: "success",

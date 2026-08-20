@@ -6,13 +6,10 @@ const Ride = require("../models/Ride");
 const Conversation = require("../models/Conversation");
 const logger = require("../config/logger");
 const User = require("../models/User");
-const {
-  sendAdminNotification,
-  NOTIFICATION_TYPES,
-} = require("../utils/notificationService");
 const Vehicle = require("../models/Vehicle");
 const {
   sendNotificationToUser,
+  sendNotificationToAdmins,
 } = require("../services/pushNotification.service");
 const validatePaymentVerification =
   require("razorpay/dist/utils/razorpay-utils").validatePaymentVerification;
@@ -199,15 +196,14 @@ exports.store = async (req, res) => {
 
     connection.release();
 
-    sendAdminNotification({
-      type: NOTIFICATION_TYPES.RIDE_BOOKED,
+    sendNotificationToAdmins({
       title: "Ride Seat Booked 🎟️",
-      message: `User ${req.user.name || req.user.id} booked a seat on Ride #${ride_id}.`,
+      body: `User ${req.user.name || req.user.id} booked a seat on Ride #${ride_id}.`,
       data: {
         bookingId: bookingId,
         rideId: ride_id,
         passengerId: req.user.id,
-        order_id: order.id,
+        orderId: order.id,
         amount: totalPrice,
       },
     });
@@ -668,8 +664,6 @@ exports.updatePaymentsRecord = async (req, res) => {
   }
 };
 
-
-
 exports.getMyBookedRides = async (req, res, next) => {
   try {
     const passengerId = req.user?.id || req.query.passengerId;
@@ -712,7 +706,7 @@ exports.getBookingDetailsById = async (req, res) => {
     if (userId != booking.passenger_id) {
       return res.status(500).json({
         status: "error",
-        message: "Unauthorize access"
+        message: "Unauthorize access",
       });
     }
     const ride = await Ride.rideDetailsById(booking.ride_id);
@@ -724,12 +718,14 @@ exports.getBookingDetailsById = async (req, res) => {
       ride.driver_details = await User.getUserWithDetails(ride.driver_id);
     }
 
-    booking.passenger_details = await User.getUserWithDetails(booking.passenger_id);
+    booking.passenger_details = await User.getUserWithDetails(
+      booking.passenger_id,
+    );
 
     return res.status(200).json({
       status: "success",
       ride: rideFormatData(ride),
-      data: booking
+      data: booking,
     });
   } catch (err) {
     // console.error(err);
@@ -912,6 +908,8 @@ exports.cancelBooking = async (req, res) => {
   }
 };
 
+
+};
 
 // private function for format
 function rideFormatData(ride) {

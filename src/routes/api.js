@@ -14,10 +14,14 @@ const ChatController = require("../controllers/ChatController");
 const { triggerSos } = require("../controllers/sosController");
 const { storeRating } = require("../controllers/ratingController");
 const {
-    registerDevice,
-    sendTestNotification,
-    broadcastNotification,
+  registerDevice,
+  sendTestNotification,
+  broadcastNotification,
+  getNotifications,
+  markAsRead,
+  markAllAsRead,
 } = require("../controllers/notification.controller");
+const { getEarnings } = require("../controllers/earningsController");
 
 router.get("/get-roles", UserController.getRoles);
 
@@ -31,24 +35,22 @@ router.post("/verify-otp", UserController.verifyOTP);
 router.get("/users", auth, UserController.index);
 router.get("/edit-user", auth, UserController.edit);
 router.post(
-    "/update-user-details",
-    auth,
-    uploadCloudinary.fields([
-        { name: "driver_license", maxCount: 1 },
-        { name: "adhhar_card", maxCount: 1 },
-        { name: "pan_card", maxCount: 1 },
-        { name: "bank_account", maxCount: 1 },
-        { name: "profile_picture", maxCount: 1 },
-    ]),
-    UserController.updateUserDetails,
+  "/update-user-details",
+  auth,
+  uploadCloudinary.fields([
+    { name: "driver_license", maxCount: 1 },
+    { name: "adhhar_card", maxCount: 1 },
+    { name: "pan_card", maxCount: 1 },
+    { name: "bank_account", maxCount: 1 },
+    { name: "profile_picture", maxCount: 1 },
+  ]),
+  UserController.updateUserDetails,
 );
 router.post(
-    "/upload-profile-image",
-    auth,
-    uploadCloudinary.fields([
-        { name: "profile_picture", maxCount: 1 },
-    ]),
-    UserController.uploadProfilePicture,
+  "/upload-profile-image",
+  auth,
+  uploadCloudinary.fields([{ name: "profile_picture", maxCount: 1 }]),
+  UserController.uploadProfilePicture,
 );
 router.get("/get-me", auth, UserController.getLoginUser);
 router.get("/profile-status", auth, UserController.getProfileStatus);
@@ -71,33 +73,33 @@ router.get("/vehicles", auth, VehicleController.index);
 router.get("/vehicles-list", auth, VehicleController.allVehicleLists);
 
 router.post(
-    "/store-vehicle-data",
-    auth,
-    uploadCloudinary.fields([
-        { name: "rc_file", maxCount: 1 },
-        { name: "insurance_file", maxCount: 1 },
-        { name: "front_image", maxCount: 1 },
-        { name: "back_image", maxCount: 1 },
-        { name: "side_image", maxCount: 1 },
-        { name: "number_plate_image", maxCount: 1 },
-    ]),
-    VehicleController.store,
+  "/store-vehicle-data",
+  auth,
+  uploadCloudinary.fields([
+    { name: "rc_file", maxCount: 1 },
+    { name: "insurance_file", maxCount: 1 },
+    { name: "front_image", maxCount: 1 },
+    { name: "back_image", maxCount: 1 },
+    { name: "side_image", maxCount: 1 },
+    { name: "number_plate_image", maxCount: 1 },
+  ]),
+  VehicleController.store,
 );
 
 router.get("/edit-vehicle-data/:id", auth, VehicleController.edit);
 
 router.put(
-    "/update-vehicle-data/:id",
-    auth,
-    upload("vehicle").fields([
-        { name: "rc_file", maxCount: 1 },
-        { name: "insurance_file", maxCount: 1 },
-        { name: "front_image", maxCount: 1 },
-        { name: "back_image", maxCount: 1 },
-        { name: "side_image", maxCount: 1 },
-        { name: "number_plate_image", maxCount: 1 },
-    ]),
-    VehicleController.update,
+  "/update-vehicle-data/:id",
+  auth,
+  upload("vehicle").fields([
+    { name: "rc_file", maxCount: 1 },
+    { name: "insurance_file", maxCount: 1 },
+    { name: "front_image", maxCount: 1 },
+    { name: "back_image", maxCount: 1 },
+    { name: "side_image", maxCount: 1 },
+    { name: "number_plate_image", maxCount: 1 },
+  ]),
+  VehicleController.update,
 );
 
 // router.delete("/destroy-vehicle-data/:id", auth, VehicleController.destroy);
@@ -127,7 +129,11 @@ router.patch("/ride/:rideId/cancel", auth, RideController.cancelRide);
 
 // router.get("/driver/booking-requests", auth, BookingController.index);
 router.get("/my-bookings", auth, BookingController.getMyBookedRides);
-router.get("/get-booking-details/:bookingId", auth, BookingController.getBookingDetailsById);
+router.get(
+  "/get-booking-details/:bookingId",
+  auth,
+  BookingController.getBookingDetailsById,
+);
 
 router.post("/create-booking", auth, BookingController.store);
 router.post("/payment-success", auth, BookingController.paymentSuccess);
@@ -155,6 +161,18 @@ router.post("/ratings", auth, storeRating);
 //Push notifications
 router.post("/notifications/devices", auth, registerDevice);
 router.post("/notifications/test", auth, sendTestNotification);
-router.post("/notifications/broadcast", auth, broadcastNotification);
+router.post(
+  "/admin/notifications/broadcast",
+  auth,
+//   isAdmin,
+  broadcastNotification,
+);
+
+// user notification View
+router.get("/notifications", auth, getNotifications);
+router.patch("/read", auth, markAsRead);
+router.patch("/read-all", auth, markAllAsRead);
+
+router.get("/driver/earnings", auth, getEarnings);
 
 module.exports = router;
