@@ -3,77 +3,75 @@ const db = require("../config/db");
 const registerDevice = async ({
   userId,
   installationId,
-  pushToken,
+  pushToken = null,
   platform,
+  deviceType = null,
+  browser = null,
+  appVersion = null,
+  permissionStatus = "default",
 }) => {
-  // Prevent the same FCM token from being active
-  // on another installation.
-  await db.execute(
-    `
-      UPDATE notification_devices
-      SET is_active = 0,
-          updated_at = NOW()
-      WHERE push_token = ?
-        AND installation_id != ?
-    `,
-    [pushToken, installationId],
-  );
-
-  const [existing] = await db.execute(
-    `
-      SELECT id
-      FROM notification_devices
-      WHERE installation_id = ?
-      LIMIT 1
-    `,
-    [installationId],
-  );
-
-  if (existing.length) {
+  // 1. Deactivate old/stale device records that share this same push token
+  if (pushToken) {
     await db.execute(
-      `
-    UPDATE notification_devices
-    SET
-      user_id = ?,
-      push_token = ?,
-      platform = ?,
-      is_active = 1,
-      last_registered_at = NOW(),
-      last_seen_at = NOW(),
-      updated_at = NOW()
-    WHERE installation_id = ?
-  `,
-      [userId, pushToken, platform, installationId],
+      `UPDATE notification_devices
+       SET is_active = 0,
+           updated_at = NOW()
+       WHERE push_token = ?
+         AND installation_id != ?`,
+      [pushToken, installationId],
     );
-
-    return {
-      id: existing[0].id,
-      userId,
-      installationId,
-      updated: true,
-    };
   }
 
+  // 2. Upsert (Insert or Update if installation_id exists)
   const [result] = await db.execute(
-    `
-      INSERT INTO notification_devices
-      (
-        user_id,
-        installation_id,
-        push_token,
-        platform,
-        is_active
-      )
-      VALUES (?, ?, ?, ?, 1)
-    `,
-    [userId, installationId, pushToken, platform],
+    `INSERT INTO notification_devices (
+       user_id,
+       installation_id,
+       push_token,
+       platform,
+       device_type,
+       browser,
+       app_version,
+       permission_status,
+       is_active,
+       last_registered_at,
+       last_seen_at,
+       created_at,
+       updated_at
+     )
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, NOW(), NOW(), NOW(), NOW())
+     ON DUPLICATE KEY UPDATE
+       user_id = VALUES(user_id),
+       push_token = VALUES(push_token),
+       platform = VALUES(platform),
+       device_type = VALUES(device_type),
+       browser = VALUES(browser),
+       app_version = VALUES(app_version),
+       permission_status = VALUES(permission_status),
+       is_active = 1,
+       last_registered_at = NOW(),
+       last_seen_at = NOW(),
+       updated_at = NOW()`,
+    [
+      userId,
+      installationId,
+      pushToken,
+      platform,
+      deviceType,
+      browser,
+      appVersion,
+      permissionStatus,
+    ],
   );
 
   return {
-    id: result.insertId,
+    id: result.insertId || result.id,
     userId,
     installationId,
-    created: true,
+    pushToken,
+    platform,
+    permissionStatus,
+    active: true,
   };
 };
 
