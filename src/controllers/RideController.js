@@ -143,6 +143,7 @@ exports.store = async (req, res) => {
     WHERE driver_id = ?
       AND ride_date = ?
       AND estimated_reach_time > ?
+      AND status IN ('scheduled', 'ongoing')
     ORDER BY estimated_reach_time DESC
     LIMIT 1
     `,
