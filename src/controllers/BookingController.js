@@ -556,13 +556,13 @@ exports.paymentFailed = async (req, res) => {
     // Update Booking
     await connection.query(
       `UPDATE ride_bookings 
-   SET 
-     status = 'cancelled',
-     payment_status = 'failed',
-     reason_of_cancel = ?,
-     cancel_reason = ?,
-     updated_at = NOW()
-   WHERE id = ?`,
+            SET 
+              status = 'cancelled',
+              payment_status = 'failed',
+              reason_of_cancel = ?,
+              cancel_reason = ?,
+              updated_at = NOW()
+            WHERE id = ?`,
       [reason, cancelCode, booking.id],
     );
 
@@ -738,7 +738,6 @@ exports.getBookingDetailsById = async (req, res) => {
   }
 };
 
-
 exports.cancelBooking = async (req, res) => {
   const connection = await db.getConnection();
 
@@ -746,7 +745,6 @@ exports.cancelBooking = async (req, res) => {
   const userId = req.user.id;
 
   try {
-
     if (!bookingId) {
       return res.status(422).json({
         status: "error",
@@ -828,7 +826,7 @@ exports.cancelBooking = async (req, res) => {
       await connection.rollback();
       return res.status(500).json({
         status: "error",
-        message: "Unauthorize access"
+        message: "Unauthorize access",
       });
     }
 
@@ -842,9 +840,9 @@ exports.cancelBooking = async (req, res) => {
       });
     }
 
-    const reasonCode = 'PASSENGER_CANCEL_BOOKING';
+    const reasonCode = "PASSENGER_CANCEL_BOOKING";
 
-    // Procced with cancel 
+    // Procced with cancel
     await connection.query(
       `UPDATE ride_bookings
             SET
@@ -854,11 +852,7 @@ exports.cancelBooking = async (req, res) => {
               cancelled_at = NOW(),
               updated_at = NOW()
               WHERE id = ?`,
-      [
-        cancelReason,
-        reasonCode,
-        bookingId,
-      ],
+      [cancelReason, reasonCode, bookingId],
     );
 
     // Restore seat
@@ -870,12 +864,9 @@ exports.cancelBooking = async (req, res) => {
       [booking.seats, booking.ride_id],
     );
 
-
-
     if (payment.status === "paid") {
       // initiate refund
     }
-
 
     await connection.commit();
 
@@ -887,7 +878,6 @@ exports.cancelBooking = async (req, res) => {
     // Socket.IO Broadcast
     const io = getIO();
     io.to(`ride_${ride.id}`).emit("ride-seat-updated", updatedRide[0]);
-
 
     return res.json({
       status: "success",
@@ -902,12 +892,10 @@ exports.cancelBooking = async (req, res) => {
       status: "error",
       message: err.message,
     });
-
   } finally {
-    connection.release()
+    connection.release();
   }
 };
-
 
 // private function for format
 function rideFormatData(ride) {
@@ -943,4 +931,3 @@ function rideFormatData(ride) {
     // route_points: ride.route_points
   };
 }
-
