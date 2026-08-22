@@ -72,7 +72,6 @@ module.exports = {
         console.log(`Socket ${socket.id} left room: ${roomName}`);
       });
 
-      // 3. Join Ride Room (FIXED: Uses underscore 'ride_')
       socket.on("join_ride", (rideId) => {
         const roomName = `ride_${rideId}`;
         socket.join(roomName);
@@ -82,17 +81,6 @@ module.exports = {
           room: roomName,
           success: true,
         });
-      });
-
-      // 4. Admin Rooms
-      socket.on("join_admin_control_room", () => {
-        socket.join("admin-control-room");
-        console.log(`🛡️ Socket ${socket.id} joined admin control room`);
-      });
-
-      socket.on("leave_admin_control_room", () => {
-        socket.leave("admin-control-room");
-        console.log(`Socket ${socket.id} left admin control room`);
       });
 
       socket.on("disconnect", (reason) => {

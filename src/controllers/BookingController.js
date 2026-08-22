@@ -11,6 +11,7 @@ const {
   sendNotificationToUser,
   sendNotificationToAdmins,
 } = require("../services/pushNotification.service");
+const NOTIFICATION_TYPES = require("../constants/notificationTypes");
 const validatePaymentVerification =
   require("razorpay/dist/utils/razorpay-utils").validatePaymentVerification;
 
@@ -878,6 +879,38 @@ exports.cancelBooking = async (req, res) => {
     // Socket.IO Broadcast
     const io = getIO();
     io.to(`ride_${ride.id}`).emit("ride-seat-updated", updatedRide[0]);
+
+    // 1. Notify Driver
+    sendNotificationToUser({
+      userId: ride.driver_id,
+      type: NOTIFICATION_TYPES.BOOKING_CANCELLED || "BOOKING_CANCELLED",
+      title: "Booking Cancelled ❌",
+      body: `A passenger cancelled their booking for Ride #${ride.id}. Reason: ${cancelReason}`,
+      data: {
+        bookingId: booking.id,
+        rideId: ride.id,
+        passengerId: userId,
+        seatsFreed: booking.seats,
+      },
+    }).catch((err) =>
+      console.error("[FCM Driver Booking Cancel Notification Error]", err),
+    );
+
+    // 2. Notify Admins
+    sendNotificationToAdmins({
+      type: NOTIFICATION_TYPES.BOOKING_CANCELLED || "BOOKING_CANCELLED",
+      title: "Booking Cancelled by Passenger ⚠️",
+      body: `Passenger ${req.user.name || userId} cancelled booking #${booking.id} on Ride #${ride.id}.`,
+      data: {
+        bookingId: booking.id,
+        rideId: ride.id,
+        passengerId: userId,
+        driverId: ride.driver_id,
+        reason: cancelReason,
+      },
+    }).catch((err) =>
+      console.error("[FCM Admin Booking Cancel Notification Error]", err),
+    );
 
     return res.json({
       status: "success",
