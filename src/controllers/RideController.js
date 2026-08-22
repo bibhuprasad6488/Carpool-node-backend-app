@@ -548,7 +548,6 @@ exports.cancelRide = async (req, res) => {
       [rideId],
     );
 
-    console.log(bookings);
 
     for (const booking of bookings) {
       try {
@@ -564,6 +563,17 @@ exports.cancelRide = async (req, res) => {
             screen: "booking",
           },
         });
+
+        await sendNotificationToAdmins({
+          rideId:rideId,
+          title: "Ride cancelled by Driver🚫",
+          body: `A ride from ${ride.source_address} to ${ride.destination_address} has been cancelled by the driver.`,
+          data: {
+            ride_id: rideId,
+            driver_id: driverId,
+            bookings: bookings
+          }
+        })
         console.log("Notification sent");
       } catch (error) {
         console.error(
@@ -633,6 +643,41 @@ exports.getTopCorridors = async function (req, res) {
       success: false,
       message: "Failed to retrieve top performing routes.",
       error: error.message,
+    });
+  }
+};
+
+
+exports.getRecentDriverRides = async (req, res) => {
+  try {
+    const driverId = req.user.id;
+
+    const rawRides = await Ride.getRecentRidesByDriver(driverId, 5);
+
+    // Format numbers and clean output structure
+    const recentRides = rawRides.map((ride) => ({
+      id: ride.id,
+      source: ride.source,
+      destination: ride.destination,
+      total_passenger: Number(ride.total_passenger),
+      status: ride.status,
+      total_earning: Number(ride.total_earning),
+      ride_date: ride.ride_date,
+    }));
+
+    return res.status(200).json({
+      status: "success",
+      count: recentRides.length,
+      data: recentRides,
+    });
+  } catch (error) {
+    logger.error(`[getRecentDriverRides Error]: ${error.message}`, {
+      stack: error.stack,
+    });
+
+    return res.status(500).json({
+      status: "error",
+      message: "Failed to retrieve recent rides",
     });
   }
 };

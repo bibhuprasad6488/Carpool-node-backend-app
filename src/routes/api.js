@@ -34,7 +34,7 @@ router.post("/verify-otp", UserController.verifyOTP);
 
 router.get("/users", auth, UserController.index);
 router.get("/edit-user", auth, UserController.edit);
-router.post(
+router.patch(
   "/update-user-details",
   auth,
   uploadCloudinary.fields([
@@ -111,6 +111,7 @@ router.put(
 */
 router.post("/find-rides", RideController.findRides);
 router.get("/top-corridors", RideController.getTopCorridors);
+router.get("/rides/recent", auth, RideController.getRecentDriverRides);
 router.get("/rides/upcoming", RideController.getUpcomingRides);
 router.post("/search-locaton", RideController.searchLocations);
 router.get("/rides", auth, RideController.index);
@@ -164,14 +165,14 @@ router.post("/notifications/test", auth, sendTestNotification);
 router.post(
   "/admin/notifications/broadcast",
   auth,
-//   isAdmin,
+  //   isAdmin,
   broadcastNotification,
 );
 
 // user notification View
 router.get("/notifications", auth, getNotifications);
-router.patch("/read", auth, markAsRead);
-router.patch("/read-all", auth, markAllAsRead);
+router.patch("/notifications/read", auth, markAsRead);
+router.patch("/notifications/read-all", auth, markAllAsRead);
 
 router.get("/driver/earnings", auth, getEarnings);
 

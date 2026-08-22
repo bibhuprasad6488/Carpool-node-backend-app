@@ -5,7 +5,9 @@ const logger = require("../config/logger");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const db = require("../config/db");
-const { sendNotificationToUser } = require("../services/pushNotification.service");
+const {
+  sendNotificationToUser,
+} = require("../services/pushNotification.service");
 const NOTIFICATION_TYPES = require("../constants/notificationTypes");
 // const transporter = require("../config/mail");
 const APP_URL = process.env.APP_URL;
@@ -80,7 +82,6 @@ exports.edit = async (req, res) => {
 exports.getRoles = async (req, res) => {
   try {
     const { name } = req.query;
-    console.log(name);
     const roles = await Role.getAllRoles(name);
     return res.json(roles);
   } catch (err) {
@@ -178,9 +179,9 @@ exports.updateUserDetails = async (req, res) => {
   const connection = await db.getConnection();
 
   try {
+    const userId = req.user.id;
     const {
       name,
-      email,
       phone,
       city,
       state,
@@ -193,151 +194,61 @@ exports.updateUserDetails = async (req, res) => {
       bank_branch_name,
     } = req.body;
 
-    const userId = req.user.id;
+    const userUpdates = {};
+    if (name !== undefined) userUpdates.name = name;
+    if (phone !== undefined) userUpdates.phone = phone;
 
-    await connection.beginTransaction();
-    // Get user account
-    const [existingUser] = await connection.query(
-      `SELECT *
-            FROM users
-            WHERE id = ?
-            LIMIT 1`,
-      [userId],
-    );
+    const detailsUpdates = {};
+    if (city !== undefined) detailsUpdates.city = city;
+    if (state !== undefined) detailsUpdates.state = state;
+    if (country !== undefined) detailsUpdates.country = country;
+    if (postal_code !== undefined) detailsUpdates.postal_code = postal_code;
+    if (address !== undefined) detailsUpdates.address = address;
+    if (bank_account_holder !== undefined)
+      detailsUpdates.bank_account_holder = bank_account_holder;
+    if (bank_account_number !== undefined)
+      detailsUpdates.bank_account_number = bank_account_number;
+    if (bank_account_ifsc !== undefined)
+      detailsUpdates.bank_account_ifsc = bank_account_ifsc;
+    if (bank_branch_name !== undefined)
+      detailsUpdates.bank_name = bank_branch_name;
 
-    if (existingUser.length > 0) {
-      await connection.query(
-        `UPDATE users
-            SET
-              name = ?,
-              email = ?,
-              phone = ?,
-              updated_at = NOW()
-              WHERE id = ?`,
-        [
-          name,
-          email,
-          phone,
-          userId,
-        ],
-      );
+    // 3. Attach file paths only if new files are provided
+    if (req.files?.driver_license?.[0]?.path) {
+      detailsUpdates.driver_license = req.files.driver_license[0].path;
+    }
+    if (req.files?.adhhar_card?.[0]?.path) {
+      detailsUpdates.adhhar_card = req.files.adhhar_card[0].path;
+    }
+    if (req.files?.pan_card?.[0]?.path) {
+      detailsUpdates.pan_card = req.files.pan_card[0].path;
+    }
+    if (req.files?.bank_account?.[0]?.path) {
+      detailsUpdates.bank_account = req.files.bank_account[0].path;
+    }
+    if (req.files?.profile_picture?.[0]?.path) {
+      detailsUpdates.profile_picture = req.files.profile_picture[0].path;
     }
 
+    if (
+      Object.keys(userUpdates).length === 0 &&
+      Object.keys(detailsUpdates).length === 0
+    ) {
+      return res.status(400).json({
+        status: "fail",
+        message: "No fields provided for update",
+      });
+    }
 
-    // Get existing user details
-    const [existingDetails] = await connection.query(
-      `SELECT *
-            FROM user_details
-            WHERE user_id = ?
-            LIMIT 1`,
-      [userId],
-    );
+    await connection.beginTransaction();
+    await connection.query("SET time_zone = '+05:30'");
 
-    // Keep existing file URLs if no new file is uploaded
-    const driver_license =
-      req.files?.driver_license?.[0]?.path ??
-      existingDetails[0]?.driver_license ??
-      null;
-    const adhhar_card =
-      req.files?.adhhar_card?.[0]?.path ??
-      existingDetails[0]?.adhhar_card ??
-      null;
-    const pan_card =
-      req.files?.pan_card?.[0]?.path ?? existingDetails[0]?.pan_card ?? null;
-    const bank_account =
-      req.files?.bank_account?.[0]?.path ??
-      existingDetails[0]?.bank_account ??
-      null;
-    const profile_picture =
-      req.files?.profile_picture?.[0]?.path ??
-      existingDetails[0]?.profile_picture ??
-      null;
+    if (Object.keys(userUpdates).length > 0) {
+      await User.updateUser(connection, userId, userUpdates);
+    }
 
-    if (existingDetails.length > 0) {
-      // Update existing details
-      await connection.query("SET time_zone = '+05:30'");
-
-      await connection.query(
-        `UPDATE user_details
-            SET
-              city = ?,
-              state = ?,
-              country = ?,
-              postal_code = ?,
-              address = ?,
-              bank_account_holder = ?,
-              bank_account_number = ?,
-              bank_account_ifsc = ?,
-              bank_name = ?,
-              driver_license = ?,
-              adhhar_card = ?,
-              pan_card = ?,
-              bank_account = ?,
-              profile_picture = ?,
-              updated_at = NOW()
-              WHERE user_id = ?`,
-        [
-          city,
-          state,
-          country,
-          postal_code,
-          address,
-          bank_account_holder,
-          bank_account_number,
-          bank_account_ifsc,
-          bank_branch_name,
-          driver_license,
-          adhhar_card,
-          pan_card,
-          bank_account,
-          profile_picture,
-          userId,
-        ],
-      );
-    } else {
-      // Create user details
-      await connection.query("SET time_zone = '+05:30'");
-
-      await connection.query(
-        `INSERT INTO user_details
-                (
-                  user_id,
-                  city,
-                  state,
-                  country,
-                  postal_code,
-                  address,
-                  bank_account_holder,
-                  bank_account_number,
-                  bank_account_ifsc,
-                  bank_name,
-                  driver_license,
-                  adhhar_card,
-                  pan_card,
-                  bank_account,
-                  profile_picture,
-                  created_at,
-                  updated_at
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
-        [
-          userId,
-          city,
-          state,
-          country,
-          postal_code,
-          address,
-          bank_account_holder,
-          bank_account_number,
-          bank_account_ifsc,
-          bank_branch_name,
-          driver_license,
-          adhhar_card,
-          pan_card,
-          bank_account,
-          profile_picture,
-        ],
-      );
+    if (Object.keys(detailsUpdates).length > 0) {
+      await User.upsertUserDetails(connection, userId, detailsUpdates);
     }
 
     await connection.commit();
@@ -348,12 +259,13 @@ exports.updateUserDetails = async (req, res) => {
     });
   } catch (err) {
     await connection.rollback();
-
-    logger.error(err);
+    logger.error(`[updateUserDetails] Error: ${err.message}`, {
+      stack: err.stack,
+    });
 
     return res.status(500).json({
       status: "error",
-      message: err.message,
+      message: "An error occurred while updating user details",
     });
   } finally {
     connection.release();
@@ -399,10 +311,7 @@ exports.uploadProfilePicture = async (req, res) => {
               profile_picture = ?,
               updated_at = NOW()
               WHERE user_id = ?`,
-        [
-          profile_picture,
-          userId,
-        ],
+        [profile_picture, userId],
       );
     } else {
       // Create user details
@@ -417,10 +326,7 @@ exports.uploadProfilePicture = async (req, res) => {
                   updated_at
                 )
                 VALUES (?, ?, NOW(), NOW())`,
-        [
-          userId,
-          profile_picture,
-        ],
+        [userId, profile_picture],
       );
     }
 
