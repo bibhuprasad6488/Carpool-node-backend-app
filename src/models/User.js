@@ -8,6 +8,7 @@ class User {
 
     return users;
   }
+
   static async findById(id) {
     const [users] = await db.query("SELECT * FROM users WHERE id = ?", [id]);
     return users[0];
@@ -47,7 +48,7 @@ class User {
     ]);
   }
 
-  static async getUserDetailsById(id) {
+  static async getUserDetailsById(id, connection = db) {
     const sql = `
         SELECT *
         FROM user_details
@@ -55,11 +56,9 @@ class User {
         LIMIT 1
     `;
 
-    const [rows] = await db.execute(sql, [id]);
-
+    const [rows] = await connection.execute(sql, [id]);
     if (rows.length) {
       const details = rows[0];
-      // console.log(details);
       return details;
     }
 
@@ -94,16 +93,56 @@ class User {
             LEFT JOIN user_details ud
                 ON ud.user_id = u.id
             WHERE u.id = ?`,
-      [id]
+      [id],
     );
 
     if (userRows.length) {
       const details = userRows[0];
-      // console.log(details);
       return details;
     }
 
     return null;
+  }
+
+  static async updateUser(connection, userId, fields) {
+    const keys = Object.keys(fields);
+    if (keys.length === 0) return;
+
+    const setClause = keys.map((key) => `\`${key}\` = ?`).join(", ");
+    const values = Object.values(fields);
+    await connection.query(
+      `UPDATE users SET ${setClause}, updated_at = NOW() WHERE id = ?`,
+      [...values, userId],
+    );
+  }
+
+  static async upsertUserDetails(connection, userId, detailsFields) {
+    const existingDetails = await this.getUserDetailsById(userId, connection);
+
+    if (existingDetails) {
+      const keys = Object.keys(detailsFields);
+      if (keys.length === 0) return;
+
+      const setClause = keys.map((key) => `\`${key}\` = ?`).join(", ");
+      const values = Object.values(detailsFields);
+
+      await connection.query(
+        `UPDATE user_details SET ${setClause}, updated_at = NOW() WHERE user_id = ?`,
+        [...values, userId],
+      );
+    } else {
+      const fieldsToInsert = { user_id: userId, ...detailsFields };
+      const keys = Object.keys(fieldsToInsert);
+      const escapedKeys = keys.map((key) => `\`${key}\``).join(", ");
+      const placeholders = keys.map(() => "?").join(", ");
+      const values = Object.values(fieldsToInsert);
+
+      await connection.query(
+        `INSERT INTO user_details (${escapedKeys}, created_at, updated_at) 
+       VALUES (${placeholders}, NOW(), NOW())`,
+        values,
+      );
+    }
   }
 }
 
