@@ -663,6 +663,31 @@ class Ride {
     const [rows] = await db.execute(query);
     return rows;
   }
+
+  static async getRecentRidesByDriver(driverId, limit = 5) {
+    const sql = `
+      SELECT 
+        r.id,
+        r.source_address AS source,
+        r.destination_address AS destination,
+        r.departure_time AS ride_date,
+        r.status,
+        COALESCE(SUM(rb.seats), 0) AS total_passenger,
+        COALESCE(dp.net_payout_amount, 0) AS total_earning
+      FROM rides r
+      LEFT JOIN ride_bookings rb 
+        ON rb.ride_id = r.id AND rb.status IN ('confirmed', 'completed', 'accepted')
+      LEFT JOIN driver_payouts dp 
+        ON dp.ride_id = r.id AND dp.driver_id = r.driver_id
+      WHERE r.driver_id = ?
+      GROUP BY r.id, dp.net_payout_amount
+      ORDER BY r.departure_time DESC, r.created_at DESC
+      LIMIT ?
+    `;
+
+    const [rows] = await db.execute(sql, [driverId, String(limit)]);
+    return rows;
+  }
 }
 
 module.exports = Ride;

@@ -646,3 +646,38 @@ exports.getTopCorridors = async function (req, res) {
     });
   }
 };
+
+
+exports.getRecentDriverRides = async (req, res) => {
+  try {
+    const driverId = req.user.id;
+
+    const rawRides = await Ride.getRecentRidesByDriver(driverId, 5);
+
+    // Format numbers and clean output structure
+    const recentRides = rawRides.map((ride) => ({
+      id: ride.id,
+      source: ride.source,
+      destination: ride.destination,
+      total_passenger: Number(ride.total_passenger),
+      status: ride.status,
+      total_earning: Number(ride.total_earning),
+      ride_date: ride.ride_date,
+    }));
+
+    return res.status(200).json({
+      status: "success",
+      count: recentRides.length,
+      data: recentRides,
+    });
+  } catch (error) {
+    logger.error(`[getRecentDriverRides Error]: ${error.message}`, {
+      stack: error.stack,
+    });
+
+    return res.status(500).json({
+      status: "error",
+      message: "Failed to retrieve recent rides",
+    });
+  }
+};

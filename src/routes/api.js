@@ -111,6 +111,7 @@ router.put(
 */
 router.post("/find-rides", RideController.findRides);
 router.get("/top-corridors", RideController.getTopCorridors);
+router.get("/rides/recent", auth, RideController.getRecentDriverRides);
 router.get("/rides/upcoming", RideController.getUpcomingRides);
 router.post("/search-locaton", RideController.searchLocations);
 router.get("/rides", auth, RideController.index);
