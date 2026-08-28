@@ -11,6 +11,7 @@ const {
   sendNotificationToRidePassengers,
 } = require("../services/pushNotification.service");
 const NOTIFICATION_TYPES = require("../constants/notificationTypes");
+const { getIO } = require("../../socket");
 
 exports.index = async (req, res) => {
   try {
@@ -404,6 +405,13 @@ exports.startRide = async (req, res) => {
     // Executes atomic update for both rides and ride_bookings
     await Ride.startRideWithBookings(rideId);
 
+    const io = getIO();
+
+    io.to(`ride_${rideId}`).emit("ride_started", {
+      rideId: Number(rideId),
+      status: "ongoing",
+    });
+
     try {
       await sendNotificationToUser({
         userId: driverId,
@@ -461,6 +469,12 @@ exports.completeRide = async (req, res) => {
     // 1. Atomically updates rides and ride_bookings to 'completed'
     await Ride.completeRideWithBookings(rideId);
 
+    const io = getIO();
+
+    io.to(`ride_${rideId}`).emit("ride_completed", {
+      rideId: Number(rideId),
+      status: "completed",
+    });
     // 3. Socket real-time broadcast
     sendNotificationToRidePassengers({
       rideId,
@@ -503,7 +517,7 @@ exports.completeRide = async (req, res) => {
 exports.cancelRide = async (req, res) => {
   try {
     const { rideId } = req.params;
-    const { reason } = req.body; 
+    const { reason } = req.body;
     const driverId = req.user.id;
 
     const ride = await Ride.findRideByIdAndDriver(rideId, driverId);
@@ -536,6 +550,14 @@ exports.cancelRide = async (req, res) => {
       cancelCode || "CANCEL_BY_DRIVER",
     );
 
+    const io = getIO();
+
+    io.to(`ride_${rideId}`).emit("ride_cancelled", {
+      rideId: Number(rideId),
+      status: "cancelled",
+      reason: reason || "",
+    });
+
     const [bookings] = await db.execute(
       `
     SELECT
@@ -565,7 +587,7 @@ exports.cancelRide = async (req, res) => {
         });
 
         await sendNotificationToAdmins({
-          rideId:rideId,
+          rideId: rideId,
           title: "Ride cancelled by Driver🚫",
           body: `A ride from ${ride.source_address} to ${ride.destination_address} has been cancelled by the driver.`,
           data: {
