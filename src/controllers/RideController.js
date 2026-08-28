@@ -111,135 +111,154 @@ exports.searchLocations = async (req, res) => {
 
 exports.store = async (req, res) => {
   const connection = await db.getConnection();
-  const {
-    vehicle_id,
-    source_address,
-    destination_address,
-    source_lat,
-    source_lng,
-    destination_lat,
-    destination_lng,
-    ride_date,
-    departure_time,
-    price_per_seat,
-    total_seats,
-    pet_allowed,
-    smoking_allowed,
-    instant_booking,
-    max_two_in_back,
-    source_place_id,
-    destination_place_id,
-  } = req.body;
-
-  const driver_id = req.user.id;
-
-  // Check in existing ride
-  const [activeRide] = await connection.execute(
-    `
-    SELECT id, departure_time, estimated_reach_time
-    FROM rides
-    WHERE driver_id = ?
-      AND ride_date = ?
-      AND estimated_reach_time > ?
-      AND status IN ('scheduled', 'ongoing')
-    ORDER BY estimated_reach_time DESC
-    LIMIT 1
-    `,
-    [driver_id, ride_date, departure_time],
-  );
-
-  if (activeRide.length > 0) {
-    return res.status(400).json({
-      status: "error",
-      message: `You cannot publish a new ride until your previous ride is completed. Previous ride ends at ${activeRide[0].estimated_reach_time}.`,
-    });
-  }
-
-  const departureDateTime = new Date(`${ride_date} ${departure_time}`);
-  const departureTimestamp = Math.floor(departureDateTime.getTime() / 1000);
-
-  const route = await GoogleMapService.getRouteDetails(
-    source_lat,
-    source_lng,
-    destination_lat,
-    destination_lng,
-    departureTimestamp,
-  );
-
-  const routePoints = GoogleMapService.decodePolyline(route.polyline);
-  const estimatedArrival = new Date(
-    departureDateTime.getTime() + route.duration_in_traffic * 1000,
-  );
-  const estimatedReachTime = estimatedArrival.toTimeString().split(" ")[0];
-
-  const rideId = await Ride.createRide({
-    driver_id,
-    vehicle_id,
-    source_address,
-    destination_address,
-    source_place_id,
-    destination_place_id,
-    source_lat,
-    source_lng,
-    destination_lat,
-    destination_lng,
-    routePoints,
-    ride_date,
-    departure_time,
-    estimatedReachTime,
-    polyline: route.polyline,
-    distance: route.distance,
-    duration_in_traffic: route.duration_in_traffic,
-    price_per_seat,
-    total_seats,
-    pet_allowed,
-    smoking_allowed,
-    instant_booking,
-    max_two_in_back,
-  });
-
-  await ActivityLog.create({
-    user_id: driver_id,
-    action: "CREATE_RIDE",
-    description: "Driver posted a new ride route",
-    entity_type: "rides",
-    entity_id: rideId,
-    ip_address: req.ip || req.headers["x-forwarded-for"],
-    user_agent: req.headers["user-agent"],
-    status: "success",
-  });
-
-  sendNotificationToAdmins({
-    title: "New Ride Published 🚗",
-    body: `New trip published from ${source_address} to ${destination_address}.`,
-    data: {
-      rideId: rideId,
-      driverId: driver_id,
-    },
-  }).catch((err) =>
-    console.error("[FCM Admin Ride Published Notification Error]", err),
-  );
 
   try {
-    await sendNotificationToUser({
-      userId: driver_id,
-      type: NOTIFICATION_TYPES.RIDE_PUBLISHED,
-      title: "Ride published",
-      body: "Your ride has been published successfully.",
+    const {
+      vehicle_id,
+      source_address,
+      destination_address,
+      source_lat,
+      source_lng,
+      destination_lat,
+      destination_lng,
+      ride_date,
+      departure_time,
+      price_per_seat,
+      total_seats,
+      pet_allowed,
+      smoking_allowed,
+      instant_booking,
+      max_two_in_back,
+      source_place_id,
+      destination_place_id,
+    } = req.body;
+
+    const driver_id = req.user.id;
+
+    // 1. Check for overlapping active rides
+    const [activeRide] = await connection.execute(
+      `
+      SELECT id, departure_time, estimated_reach_time
+      FROM rides
+      WHERE driver_id = ?
+        AND ride_date = ?
+        AND estimated_reach_time > ?
+        AND status IN ('scheduled', 'ongoing')
+      ORDER BY estimated_reach_time DESC
+      LIMIT 1
+      `,
+      [driver_id, ride_date, departure_time],
+    );
+
+    if (activeRide.length > 0) {
+      return res.status(400).json({
+        status: "error",
+        message: `You cannot publish a new ride until your previous ride is completed. Previous ride ends at ${activeRide[0].estimated_reach_time}.`,
+      });
+    }
+
+    // 2. Parse ISO DateTime safely
+    const departureDateTime = new Date(`${ride_date}T${departure_time}`);
+    const departureTimestamp = Math.floor(departureDateTime.getTime() / 1000);
+
+    // 3. Fetch Google Route Specs
+    const route = await GoogleMapService.getRouteDetails(
+      source_lat,
+      source_lng,
+      destination_lat,
+      destination_lng,
+      departureTimestamp,
+    );
+
+    const routePoints = GoogleMapService.decodePolyline(route.polyline);
+    const estimatedArrival = new Date(
+      departureDateTime.getTime() + route.duration_in_traffic * 1000,
+    );
+    const estimatedReachTime = estimatedArrival.toTimeString().split(" ")[0];
+
+    // 4. Create Ride
+    const rideId = await Ride.createRide({
+      driver_id,
+      vehicle_id,
+      source_address,
+      destination_address,
+      source_place_id,
+      destination_place_id,
+      source_lat,
+      source_lng,
+      destination_lat,
+      destination_lng,
+      routePoints,
+      ride_date,
+      departure_time,
+      estimatedReachTime,
+      polyline: route.polyline,
+      distance: route.distance,
+      duration_in_traffic: route.duration_in_traffic,
+      price_per_seat,
+      total_seats,
+      pet_allowed,
+      smoking_allowed,
+      instant_booking,
+      max_two_in_back,
+    });
+
+    // 5. Activity Logging
+    await ActivityLog.create({
+      user_id: driver_id,
+      action: "CREATE_RIDE",
+      description: "Driver posted a new ride route",
+      entity_type: "rides",
+      entity_id: rideId,
+      ip_address: req.ip || req.headers["x-forwarded-for"],
+      user_agent: req.headers["user-agent"],
+      status: "success",
+    });
+
+    // 6. Push Notifications (Async non-blocking error safe)
+    sendNotificationToAdmins({
+      title: "New Ride Published 🚗",
+      body: `New trip published from ${source_address} to ${destination_address}.`,
       data: {
-        rideId,
-        screen: "ride-details",
+        rideId: rideId,
+        driverId: driver_id,
       },
+    }).catch((err) =>
+      console.error("[FCM Admin Ride Published Notification Error]", err),
+    );
+
+    try {
+      await sendNotificationToUser({
+        userId: driver_id,
+        type: NOTIFICATION_TYPES.RIDE_PUBLISHED,
+        title: "Ride published",
+        body: "Your ride has been published successfully.",
+        data: {
+          rideId,
+          screen: "ride-details",
+        },
+      });
+    } catch (error) {
+      console.error("Failed to send ride published notification:", error);
+    }
+
+    return res.status(201).json({
+      status: "success",
+      message: "Ride published successfully.",
+      ride_id: rideId,
     });
   } catch (error) {
-    console.error("Failed to send ride published notification:", error);
+    console.error("[RideStore Error]", error);
+    return res.status(500).json({
+      status: "error",
+      message:
+        error.message ||
+        "An unexpected error occurred while publishing the ride.",
+    });
+  } finally {
+    // Crucial: Release connection back to pool on success, fail, or early return
+    if (connection) connection.release();
   }
-
-  return res.status(201).json({
-    status: "success",
-    message: "Ride published successfully.",
-    ride_id: rideId,
-  });
 };
 
 exports.edit = async (req, res) => {
@@ -404,6 +423,15 @@ exports.startRide = async (req, res) => {
     // Executes atomic update for both rides and ride_bookings
     await Ride.startRideWithBookings(rideId);
 
+    const io = req.app.get("io");
+    if (io) {
+      io.to(`ride_${rideId}`).emit("ride:status_changed", {
+        rideId,
+        status: "ongoing",
+        message: "The ride has started!",
+      });
+    }
+
     try {
       await sendNotificationToUser({
         userId: driverId,
@@ -461,7 +489,15 @@ exports.completeRide = async (req, res) => {
     // 1. Atomically updates rides and ride_bookings to 'completed'
     await Ride.completeRideWithBookings(rideId);
 
-    // 3. Socket real-time broadcast
+    const io = req.app.get("io");
+    if (io) {
+      io.to(`ride_${rideId}`).emit("ride:status_changed", {
+        rideId,
+        status: "completed",
+        message: "The driver has completed this ride.",
+      });
+    }
+
     sendNotificationToRidePassengers({
       rideId,
       type: NOTIFICATION_TYPES.RIDE_COMPLETED,
@@ -503,7 +539,7 @@ exports.completeRide = async (req, res) => {
 exports.cancelRide = async (req, res) => {
   try {
     const { rideId } = req.params;
-    const { reason } = req.body; 
+    const { reason } = req.body;
     const driverId = req.user.id;
 
     const ride = await Ride.findRideByIdAndDriver(rideId, driverId);
@@ -548,7 +584,6 @@ exports.cancelRide = async (req, res) => {
       [rideId],
     );
 
-
     for (const booking of bookings) {
       try {
         console.log("Notification sending");
@@ -565,15 +600,15 @@ exports.cancelRide = async (req, res) => {
         });
 
         await sendNotificationToAdmins({
-          rideId:rideId,
+          rideId: rideId,
           title: "Ride cancelled by Driver🚫",
           body: `A ride from ${ride.source_address} to ${ride.destination_address} has been cancelled by the driver.`,
           data: {
             ride_id: rideId,
             driver_id: driverId,
-            bookings: bookings
-          }
-        })
+            bookings: bookings,
+          },
+        });
         console.log("Notification sent");
       } catch (error) {
         console.error(
@@ -581,6 +616,15 @@ exports.cancelRide = async (req, res) => {
           error,
         );
       }
+    }
+
+    const io = req.app.get("io");
+    if (io) {
+      io.to(`ride_${rideId}`).emit("ride:status_changed", {
+        rideId,
+        status: "cancelled",
+        message: "The driver has cancelled this ride.",
+      });
     }
 
     sendNotificationToAdmins({
@@ -646,7 +690,6 @@ exports.getTopCorridors = async function (req, res) {
     });
   }
 };
-
 
 exports.getRecentDriverRides = async (req, res) => {
   try {

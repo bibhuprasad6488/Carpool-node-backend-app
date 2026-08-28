@@ -164,7 +164,7 @@ router.post("/notifications/devices", auth, registerDevice);
 router.post("/notifications/test", auth, sendTestNotification);
 router.post(
   "/admin/notifications/broadcast",
-  auth,
+  // auth,
   //   isAdmin,
   broadcastNotification,
 );
