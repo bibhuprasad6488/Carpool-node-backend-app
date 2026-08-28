@@ -71,10 +71,10 @@ const handleExpiredRides = async () => {
       );
       updatedBookingsCount = bookingResult.affectedRows;
 
-      // 5. Update corresponding payments records to 'refunded'
+      // 5. Update corresponding payments records to 'refund_requested'
       const [paymentResult] = await connection.query(
         `UPDATE payments 
-         SET payment_status = 'refunded', 
+         SET payment_status = 'refund_requested', 
              refunded_at = NOW(),
              updated_at = NOW()
          WHERE booking_code IN (?) OR booking_id IN (?)`,
@@ -90,7 +90,7 @@ const handleExpiredRides = async () => {
     console.log("✅ [CRON SUCCESS] Expired Rides Task Completed");
     console.log(`📌 Rides marked expired:      ${updatedRidesCount}`);
     console.log(`📌 Bookings marked cancelled: ${updatedBookingsCount}`);
-    console.log(`📌 Payments marked refunded:  ${updatedPaymentsCount}`);
+    console.log(`📌 Payments marked refund requested:  ${updatedPaymentsCount}`);
     console.log("==========================================");
 
     ridesToNotify = expiredRides;
