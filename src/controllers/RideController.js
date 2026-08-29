@@ -257,7 +257,6 @@ exports.store = async (req, res) => {
         "An unexpected error occurred while publishing the ride.",
     });
   } finally {
-    // Crucial: Release connection back to pool on success, fail, or early return
     if (connection) connection.release();
   }
 };
