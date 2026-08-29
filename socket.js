@@ -1,6 +1,7 @@
 // socket.js
 const { Server } = require("socket.io");
 const Conversation = require("./src/models/Conversation");
+const Ride = require("./src/models/Ride");
 
 let io;
 
@@ -131,7 +132,73 @@ module.exports = {
         });
       });
 
-      // 8. Disconnect Handler
+      socket.on("driver_location", async (data) => {
+        try {
+          const {
+            rideId,
+            latitude,
+            longitude,
+            heading,
+            speed,
+          } = data;
+
+          if (!rideId || latitude === undefined || longitude === undefined) {
+            return socket.emit("error", {
+              message: "rideId, latitude and longitude are required",
+            });
+          }
+
+          // Driver must be the authenticated driver
+          if (!socket.isRideDriver || Number(socket.rideId) !== Number(rideId)) {
+            return socket.emit("error", {
+              message: "Unauthorized location update",
+            });
+          }
+
+          // Check ride is still ongoing
+          const ride = await Ride.rideDetailsById(rideId);
+
+          if (!ride) {
+            return socket.emit("error", {
+              message: "Ride not found",
+            });
+          }
+
+          if (ride.status !== "ongoing") {
+            return socket.emit("error", {
+              message: "Location tracking is not active",
+            });
+          }
+
+          // Broadcast to passengers/driver in ride room
+          io.to(`ride_${rideId}`).emit("driver_location_updated",
+            {
+              rideId: Number(rideId),
+              latitude: Number(latitude),
+              longitude: Number(longitude),
+              heading:
+                heading !== undefined
+                  ? Number(heading)
+                  : null,
+              speed:
+                speed !== undefined
+                  ? Number(speed)
+                  : null,
+            },
+          );
+
+        } catch (error) {
+          console.error(
+            "[DRIVER LOCATION ERROR]",
+            error
+          );
+
+          socket.emit("error", {
+            message: "Failed to update driver location",
+          });
+        }
+      });
+
       socket.on("disconnect", (reason) => {
         console.log(
           `❌ Socket disconnected: ID ${socket.id} (Reason: ${reason})`,

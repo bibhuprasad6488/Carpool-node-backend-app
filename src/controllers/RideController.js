@@ -11,6 +11,7 @@ const {
   sendNotificationToRidePassengers,
 } = require("../services/pushNotification.service");
 const NOTIFICATION_TYPES = require("../constants/notificationTypes");
+const { getIO } = require("../../socket");
 
 exports.index = async (req, res) => {
   try {
@@ -423,14 +424,12 @@ exports.startRide = async (req, res) => {
     // Executes atomic update for both rides and ride_bookings
     await Ride.startRideWithBookings(rideId);
 
-    const io = req.app.get("io");
-    if (io) {
-      io.to(`ride_${rideId}`).emit("ride:status_changed", {
-        rideId,
-        status: "ongoing",
-        message: "The ride has started!",
-      });
-    }
+    const io = getIO();
+
+    io.to(`ride_${rideId}`).emit("ride_started", {
+      rideId: Number(rideId),
+      status: "ongoing",
+    });
 
     try {
       await sendNotificationToUser({
@@ -489,15 +488,13 @@ exports.completeRide = async (req, res) => {
     // 1. Atomically updates rides and ride_bookings to 'completed'
     await Ride.completeRideWithBookings(rideId);
 
-    const io = req.app.get("io");
-    if (io) {
-      io.to(`ride_${rideId}`).emit("ride:status_changed", {
-        rideId,
-        status: "completed",
-        message: "The driver has completed this ride.",
-      });
-    }
+    const io = getIO();
 
+    io.to(`ride_${rideId}`).emit("ride_completed", {
+      rideId: Number(rideId),
+      status: "completed",
+    });
+    // 3. Socket real-time broadcast
     sendNotificationToRidePassengers({
       rideId,
       type: NOTIFICATION_TYPES.RIDE_COMPLETED,
@@ -571,6 +568,14 @@ exports.cancelRide = async (req, res) => {
       reason,
       cancelCode || "CANCEL_BY_DRIVER",
     );
+
+    const io = getIO();
+
+    io.to(`ride_${rideId}`).emit("ride_cancelled", {
+      rideId: Number(rideId),
+      status: "cancelled",
+      reason: reason || "",
+    });
 
     const [bookings] = await db.execute(
       `
