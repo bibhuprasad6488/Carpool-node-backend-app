@@ -720,3 +720,37 @@ exports.getRecentDriverRides = async (req, res) => {
     });
   }
 };
+
+exports.getRideById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id || isNaN(id)) {
+      return res.status(400).json({
+        status: "error",
+        message: "Invalid ride ID provided.",
+      });
+    }
+
+    const ride = await Ride.getRideById(id);
+
+    if (!ride) {
+      return res.status(404).json({
+        status: "error",
+        message: "Ride not found.",
+      });
+    }
+
+    return res.status(200).json({
+      status: "success",
+      message: "Ride details retrieved successfully.",
+      data: ride,
+    });
+  } catch (error) {
+    console.error("[GetRideById Error]:", error);
+    return res.status(500).json({
+      status: "error",
+      message: "An error occurred while fetching ride details.",
+    });
+  }
+};

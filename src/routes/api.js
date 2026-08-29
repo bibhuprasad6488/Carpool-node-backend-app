@@ -115,6 +115,7 @@ router.get("/rides/recent", auth, RideController.getRecentDriverRides);
 router.get("/rides/upcoming", RideController.getUpcomingRides);
 router.post("/search-locaton", RideController.searchLocations);
 router.get("/rides", auth, RideController.index);
+router.get("/track-ride/:id",  RideController.getRideById);
 router.post("/store-ride-data", auth, RideController.store);
 router.get("/edit-ride-data/:id", auth, RideController.edit);
 router.get("/get-ride-data/:id", RideController.getRideData);
