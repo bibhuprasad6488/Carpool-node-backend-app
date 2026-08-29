@@ -623,15 +623,6 @@ exports.cancelRide = async (req, res) => {
       }
     }
 
-    const io = req.app.get("io");
-    if (io) {
-      io.to(`ride_${rideId}`).emit("ride:status_changed", {
-        rideId,
-        status: "cancelled",
-        message: "The driver has cancelled this ride.",
-      });
-    }
-
     sendNotificationToAdmins({
       type: NOTIFICATION_TYPES.RIDE_CANCELLED,
       title: "Ride Cancelled ⚠️",
