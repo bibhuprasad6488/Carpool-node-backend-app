@@ -67,6 +67,8 @@ class Conversation {
             c.passenger_id,
             c.created_at,
 
+            r.status AS ride_status,
+
             u.id AS user_id,
             u.name AS user_name,
             u.role,
@@ -79,6 +81,10 @@ class Conversation {
 
         FROM conversations c
 
+        INNER JOIN rides r
+            ON r.id = c.ride_id
+            AND r.status IN ('scheduled','ongoing')
+            
         INNER JOIN users u
             ON u.id = c.passenger_id
 

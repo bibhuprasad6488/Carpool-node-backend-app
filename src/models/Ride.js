@@ -688,6 +688,94 @@ class Ride {
     const [rows] = await db.execute(sql, [driverId, String(limit)]);
     return rows;
   }
+  static async getRideById(rideId) {
+    if (!rideId) return null;
+ 
+    const sql = `
+    SELECT
+      r.id,
+      r.driver_id,
+      r.vehicle_id,
+      r.source_address,
+      r.source_place_id,
+      r.destination_address,
+      r.destination_place_id,
+      r.source_lat,
+      r.source_lng,
+      r.destination_lat,
+      r.destination_lng,
+      DATE_FORMAT(r.ride_date, '%Y-%m-%d') AS ride_date,
+      r.departure_time,
+      r.distance_meters,
+      r.duration_seconds,
+      r.estimated_reach_time,
+      r.pet_allowed,
+      r.smoking_allowed,
+      r.instant_booking,
+      r.price_per_seat,
+      r.total_seats,
+      r.available_seats,
+      r.status,
+      r.created_at,
+      r.updated_at,
+ 
+      u.name AS driver_name,
+      u.email AS driver_email,
+      u.phone AS driver_phone,
+ 
+      v.model,
+      v.registration_number,
+      v.fuel_type
+ 
+    FROM rides r
+ 
+    LEFT JOIN users u
+      ON u.id = r.driver_id
+ 
+    LEFT JOIN vehicles v
+      ON v.id = r.vehicle_id
+ 
+    WHERE r.id = ?
+    LIMIT 1
+  `;
+ 
+    const [rows] = await db.execute(sql, [rideId]);
+ 
+    if (rows.length === 0) {
+      return null;
+    }
+ 
+    const ride = rows[0];
+ 
+    // Fetch booking details for this specific ride
+    const bookingSql = `
+    SELECT
+      rb.id AS booking_id,
+      rb.booking_code,
+      rb.ride_id,
+      rb.passenger_id,
+      rb.seats AS booked_seats,
+      rb.total_price,
+      rb.status,
+      rb.payment_status,
+ 
+      p.name AS passenger_name,
+      p.email AS passenger_email,
+      p.phone AS passenger_phone
+ 
+    FROM ride_bookings rb
+ 
+    LEFT JOIN users p
+      ON p.id = rb.passenger_id
+ 
+    WHERE rb.ride_id = ?
+  `;
+ 
+    const [bookingRows] = await db.execute(bookingSql, [rideId]);
+    ride.bookingDetails = bookingRows;
+ 
+    return ride;
+  }
 }
 
 module.exports = Ride;
